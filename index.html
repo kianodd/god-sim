@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 <header class="topbar">
@@ -134,7 +134,25 @@
         <button class="btn btn-glass" id="btnRandomMut" type="button">🎲 جهش تصادفی در همه</button>
         <button class="btn btn-glass" id="btnShuffleGenes" type="button">🔀 به‌هم‌ریختن ژن‌ها</button>
       </div>
+      <div class="trait-search">
+        <input id="traitSearch" type="search" placeholder="🔍 جست‌وجوی ویژگی…" aria-label="جست‌وجوی ویژگی">
+        <select id="traitGeneFilter" aria-label="فیلتر بر اساس ژن">
+          <option value="">همه‌ی ژن‌ها</option>
+          <option value="speed">سرعت</option><option value="vision">بینایی</option>
+          <option value="size">جثه</option><option value="aggression">پرخاشگری</option>
+          <option value="metabolism">متابولیسم کند</option><option value="fertility">باروری</option>
+          <option value="cooperation">همکاری</option><option value="coldRes">مقاومت سرما</option>
+          <option value="heatRes">مقاومت گرما</option><option value="lifespan">طول عمر</option>
+          <option value="efficiency">چابکی</option><option value="immunity">ایمنی</option>
+          <option value="coat">رنگ پوشش</option><option value="mask">پوشش تیره</option>
+        </select>
+      </div>
       <div class="trait-list" id="traitList"></div>
+      <div class="trait-pager">
+        <button class="btn btn-glass" id="traitPrev" type="button">‹ قبلی</button>
+        <span id="traitPageInfo"></span>
+        <button class="btn btn-glass" id="traitNext" type="button">بعدی ›</button>
+      </div>
 
       <h3>✨ ساخت ویژگی دلخواه</h3>
       <div class="custom-trait">
@@ -237,6 +255,6 @@
   <span id="footFps">۶۰ فریم</span>
 </footer>
 
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

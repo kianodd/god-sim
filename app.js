@@ -107,6 +107,113 @@ const TRAITS=[
  {id:'efficient',icon:'🪽',name:'چابک',gene:'efficiency',desc:'با حرکت کمتر، انرژی کمتری می‌سوزاند.'},
  {id:'immune',icon:'🛡️',name:'ایمنی قوی',gene:'immunity',desc:'در برابر طاعون مقاوم است و کمتر بیمار می‌شود.'},
  {id:'darkcoat',icon:'🌑',name:'پوشش تیره',gene:'mask',desc:'اپیستازی: اگر ظاهر شود، بدن تیره می‌شود و رنگ پوشش را می‌پوشاند.'},
+ /* --- دسته ۱: حواس (x001–x015) --- */
+ {id:'x001',icon:'👂',name:'شنوایی تیز',gene:'vision',desc:'صداهای غذا و خطر را از دور می‌شنود و زودتر واکنش نشان می‌دهد.'},
+ {id:'x002',icon:'👃',name:'بویایی قوی',gene:'vision',desc:'بوی غذا را از فاصله‌ی دور حس می‌کند و مستقیم به سمتش می‌رود.'},
+ {id:'x003',icon:'👁️',name:'چشم تیزبین',gene:'vision',desc:'ریزترین غذاها را هم از دور تشخیص می‌دهد.'},
+ {id:'x004',icon:'🌙',name:'بینایی شبانه',gene:'vision',desc:'در تاریکی شب هم غذا را می‌بیند و شکار می‌کند.'},
+ {id:'x005',icon:'🧭',name:'حس جهت‌یابی',gene:'vision',desc:'همیشه می‌داند غذا کجاست و مسیر مستقیم را پیدا می‌کند.'},
+ {id:'x006',icon:'⚡',name:'واکنش برق‌آسا',gene:'speed',desc:'به‌محض دیدن غذا مثل برق به سمتش می‌پرد.'},
+ {id:'x007',icon:'🦉',name:'گوش‌های جغدی',gene:'vision',desc:'حتی در سکوت هم کوچک‌ترین حرکت را حس می‌کند.'},
+ {id:'x008',icon:'🔍',name:'نگاه جست‌وجوگر',gene:'vision',desc:'زمین را وجب‌به‌وجب می‌گردد و غذای پنهان را پیدا می‌کند.'},
+ {id:'x009',icon:'🌫️',name:'دید در مه',gene:'vision',desc:'در مه و تاریکی هم دیدش کم نمی‌شود.'},
+ {id:'x010',icon:'📡',name:'شنونده‌ی خطر',gene:'vision',desc:'نزدیک‌شدن رقیب را زود حس می‌کند و فرار می‌کند.'},
+ {id:'x011',icon:'🧠',name:'حافظه‌ی مکانی',gene:'vision',desc:'جای غذاهای قبلی را به خاطر می‌سپارد و دوباره برمی‌گردد.'},
+ {id:'x012',icon:'🎯',name:'تمرکز شکار',gene:'vision',desc:'روی یک هدف قفل می‌کند و تا رسیدن به آن ول نمی‌کند.'},
+ {id:'x013',icon:'🦇',name:'حس پژواکی',gene:'vision',desc:'با صدا محیط را می‌سنجد و در تاریکی راهش را پیدا می‌کند.'},
+ {id:'x014',icon:'🌡️',name:'حس گرما',gene:'vision',desc:'گرمای بدن دیگران را از دور حس می‌کند.'},
+ {id:'x015',icon:'💡',name:'ذهن روشن',gene:'vision',desc:'محیط را سریع‌تر یاد می‌گیرد و غذا را زودتر پیدا می‌کند.'},
+ /* --- دسته ۲: بدن و قدرت (x016–x030) --- */
+ {id:'x016',icon:'💪',name:'بازوی پولادین',gene:'size',desc:'عضله‌هایش قوی‌اند و در دعوا کمتر کسی حریفش می‌شود.'},
+ {id:'x017',icon:'🦍',name:'تنومند',gene:'size',desc:'جثه‌ی بزرگی دارد و رقیب‌ها از او می‌ترسند.'},
+ {id:'x018',icon:'🪨',name:'پوست سنگی',gene:'size',desc:'پوست سفتش ضربه‌ها را کم می‌کند.'},
+ {id:'x019',icon:'🏋️',name:'قدرت بدنی',gene:'size',desc:'در کشمکش سر غذا معمولاً برنده است.'},
+ {id:'x020',icon:'🦏',name:'شاخ‌دار',gene:'size',desc:'با شاخش رقیب را عقب می‌راند و غذایش را می‌گیرد.'},
+ {id:'x021',icon:'🐘',name:'سنگین‌وزن',gene:'size',desc:'وزنش زیاد است و کسی نمی‌تواند او را هل بدهد.'},
+ {id:'x022',icon:'🌩️',name:'سرعت برق',gene:'speed',desc:'آن‌قدر سریع است که غذا را قبل از همه می‌قاپد.'},
+ {id:'x023',icon:'🏃',name:'دونده‌ی استقامت',gene:'speed',desc:'سریع می‌دود و دیر خسته می‌شود.'},
+ {id:'x024',icon:'🐆',name:'چابکی یوز',gene:'speed',desc:'شتابش بی‌نظیر است و در یک چشم‌به‌هم‌زدن می‌رسد.'},
+ {id:'x025',icon:'🪽',name:'سبک‌بال',gene:'efficiency',desc:'بدنش سبک است و با انرژی کم مسافت زیادی می‌رود.'},
+ {id:'x026',icon:'🦘',name:'جهنده',gene:'speed',desc:'با جهش‌های بلند سریع به غذا می‌رسد.'},
+ {id:'x027',icon:'🐢',name:'لاک‌پشتی',gene:'size',desc:'لاک سختش او را از ضربه‌ها محافظت می‌کند.'},
+ {id:'x028',icon:'💎',name:'بدن الماسی',gene:'size',desc:'بدنش سخت و محکم است و زخم کمتر می‌خورد.'},
+ {id:'x029',icon:'🦁',name:'یال‌دار',gene:'size',desc:'یالش او را بزرگ‌تر نشان می‌دهد و رقیب‌ها عقب می‌کشند.'},
+ {id:'x030',icon:'👣',name:'قدم‌های بلند',gene:'speed',desc:'با هر قدم مسافت بیشتری می‌رود و زود به غذا می‌رسد.'},
+ /* --- دسته ۳: رفتار و هوش (x031–x045) --- */
+ {id:'x031',icon:'🧠',name:'هوش بالا',gene:'efficiency',desc:'راه کوتاه‌تر را انتخاب می‌کند و کمتر انرژی هدر می‌دهد.'},
+ {id:'x032',icon:'🤔',name:'متفکر',gene:'efficiency',desc:'قبل از حرکت فکر می‌کند و بهترین مسیر را می‌رود.'},
+ {id:'x033',icon:'🧩',name:'حل‌کننده‌ی مسئله',gene:'efficiency',desc:'غذاهای دور از دسترس را با راه‌حل پیدا می‌کند.'},
+ {id:'x034',icon:'🎭',name:'فریبکار',gene:'aggression',desc:'با فریب رقیب را از غذا دور می‌کند.'},
+ {id:'x035',icon:'😤',name:'لجباز',gene:'aggression',desc:'سر غذا هیچ‌وقت عقب نمی‌کشد.'},
+ {id:'x036',icon:'😠',name:'تندخو',gene:'aggression',desc:'زود عصبانی می‌شود و سر کوچک‌ترین غذا دعوا می‌کند.'},
+ {id:'x037',icon:'🤫',name:'پنهان‌کار',gene:'efficiency',desc:'بی‌سروصدا حرکت می‌کند و غذایش را قایم می‌کند.'},
+ {id:'x038',icon:'🦊',name:'روباه‌صفت',gene:'efficiency',desc:'زیرک است و غذا را بدون دعوا به دست می‌آورد.'},
+ {id:'x039',icon:'🐺',name:'گرگ‌صفت',gene:'aggression',desc:'درنده و جسور است و از هیچ دعوایی نمی‌ترسد.'},
+ {id:'x040',icon:'😌',name:'آرام و صبور',gene:'metabolism',desc:'آرام می‌ماند و انرژی‌اش را برای لحظه‌ی مناسب نگه می‌دارد.'},
+ {id:'x041',icon:'⏳',name:'شکارچی صبور',gene:'metabolism',desc:'ساعت‌ها صبر می‌کند تا بهترین لحظه برای شکار برسد.'},
+ {id:'x042',icon:'🧘',name:'خونسرد',gene:'metabolism',desc:'در شرایط سخت هم آرام است و انرژی‌اش را هدر نمی‌دهد.'},
+ {id:'x043',icon:'🎯',name:'دقیق و متمرکز',gene:'vision',desc:'فقط به هدفش نگاه می‌کند و حواسش پرت نمی‌شود.'},
+ {id:'x044',icon:'🔄',name:'یادگیرنده‌ی سریع',gene:'efficiency',desc:'از تجربه‌ها سریع یاد می‌گیرد و اشتباهش را تکرار نمی‌کند.'},
+ {id:'x045',icon:'📋',name:'برنامه‌ریز',gene:'efficiency',desc:'حرکت‌هایش را طوری برنامه می‌ریزد که کمترین انرژی را بسوزاند.'},
+ /* --- دسته ۴: بقا و مقاومت (x046–x060) --- */
+ {id:'x046',icon:'❄️',name:'پوست یخی',gene:'coldRes',desc:'در سرمای کشنده هم بدنش گرم می‌ماند.'},
+ {id:'x047',icon:'🧊',name:'خون سرد',gene:'coldRes',desc:'سرما او را کند نمی‌کند و مثل همیشه حرکت می‌کند.'},
+ {id:'x048',icon:'🏔️',name:'کوه‌نورد',gene:'coldRes',desc:'به هوای سرد کوهستان عادت کرده و سرما اذیتش نمی‌کند.'},
+ {id:'x049',icon:'🔥',name:'پوست آتشین',gene:'heatRes',desc:'گرمای سوزان او را از پا نمی‌اندازد.'},
+ {id:'x050',icon:'🌡️',name:'تحمل گرما',gene:'heatRes',desc:'در موج گرما هم خنک می‌ماند و زنده می‌ماند.'},
+ {id:'x051',icon:'🏜️',name:'صحرانشین',gene:'heatRes',desc:'به گرمای صحرا عادت کرده و آب کمی می‌خواهد.'},
+ {id:'x052',icon:'🛡️',name:'سپر ایمنی',gene:'immunity',desc:'بدنش در برابر بیماری‌ها مثل سپر عمل می‌کند.'},
+ {id:'x053',icon:'💉',name:'آنتی‌بادی قوی',gene:'immunity',desc:'طاعون را سریع شکست می‌دهد و دوباره بیمار نمی‌شود.'},
+ {id:'x054',icon:'🦠',name:'مقاوم به طاعون',gene:'immunity',desc:'اگر طاعون بگیرد، خیلی زود خوب می‌شود.'},
+ {id:'x055',icon:'⏰',name:'عمر دراز',gene:'lifespan',desc:'سال‌ها بیشتر از بقیه عمر می‌کند.'},
+ {id:'x056',icon:'🌱',name:'جوان‌ماننده',gene:'lifespan',desc:'دیر پیر می‌شود و مدت زیادی جوان و قوی می‌ماند.'},
+ {id:'x057',icon:'🩹',name:'بازیابی سریع',gene:'lifespan',desc:'زخم‌هایش زود خوب می‌شود و عمر طولانی‌تری دارد.'},
+ {id:'x058',icon:'🕯️',name:'کندسوز',gene:'metabolism',desc:'انرژی‌اش را قطره‌قطره مصرف می‌کند و در قحطی دوام می‌آورد.'},
+ {id:'x059',icon:'🍂',name:'خواب زمستانی',gene:'metabolism',desc:'وقتی غذا نیست، به خواب می‌رود و انرژی‌اش را ذخیره می‌کند.'},
+ {id:'x060',icon:'🏋️',name:'تحمل گرسنگی',gene:'metabolism',desc:'گرسنگی را بیشتر از بقیه تحمل می‌کند.'},
+ /* --- دسته ۵: اجتماعی و جفت‌یابی (x061–x075) --- */
+ {id:'x061',icon:'🤝',name:'دوست‌داشتنی',gene:'cooperation',desc:'همه دوستش دارند و غذا را با او تقسیم می‌کنند.'},
+ {id:'x062',icon:'💞',name:'جذاب',gene:'fertility',desc:'جفت‌های زیادی جذبش می‌شوند و بیشتر بچه‌دار می‌شود.'},
+ {id:'x063',icon:'👨‍👩‍👧‍👦',name:'خانواده‌دوست',gene:'cooperation',desc:'به خانواده‌اش غذا می‌رساند و از بچه‌ها مراقبت می‌کند.'},
+ {id:'x064',icon:'🎤',name:'سخنگوی گروه',gene:'cooperation',desc:'گروه را دور غذا جمع می‌کند و دعوا را کم می‌کند.'},
+ {id:'x065',icon:'🕊️',name:'صلح‌طلب',gene:'cooperation',desc:'همیشه دعوا را به آشتی تبدیل می‌کند.'},
+ {id:'x066',icon:'🤗',name:'مهربان',gene:'cooperation',desc:'غذایش را با گرسنه‌ها تقسیم می‌کند.'},
+ {id:'x067',icon:'💍',name:'وفادار',gene:'fertility',desc:'به یک جفت وفادار می‌ماند و بچه‌هایش سالم‌ترند.'},
+ {id:'x068',icon:'🌹',name:'عاشق‌پیشه',gene:'fertility',desc:'در فصل جفت‌گیری فعال‌تر از بقیه است.'},
+ {id:'x069',icon:'🎵',name:'آوازخوان',gene:'fertility',desc:'با آوازش جفت‌ها را از دور جذب می‌کند.'},
+ {id:'x070',icon:'🦚',name:'پرهای رنگی',gene:'coat',desc:'پرهای رنگی‌اش جفت‌ها را مجذوب می‌کند.'},
+ {id:'x071',icon:'✨',name:'درخشان',gene:'coat',desc:'پوشش براقش در چشم جفت‌ها می‌درخشد.'},
+ {id:'x072',icon:'🎨',name:'رنگارنگ',gene:'coat',desc:'رنگ‌های شادش او را میان جمع متمایز می‌کند.'},
+ {id:'x073',icon:'👑',name:'رهبر گروه',gene:'cooperation',desc:'دیگران دنبالش می‌روند و گروه منظم‌تر غذا پیدا می‌کند.'},
+ {id:'x074',icon:'🛡️',name:'محافظ گروه',gene:'cooperation',desc:'از ضعیف‌ترها مراقبت می‌کند و گروه را نگه می‌دارد.'},
+ {id:'x075',icon:'🐾',name:'وفادار به گله',gene:'cooperation',desc:'هیچ‌وقت گله را تنها نمی‌گذارد و همیشه با هم شکار می‌کنند.'},
+ /* --- دسته ۶: محیط و آب‌وهوا (x076–x090) --- */
+ {id:'x076',icon:'🌧️',name:'باران‌دوست',gene:'coldRes',desc:'باران او را سرحال می‌کند و در هوای مرطوب بهتر حرکت می‌کند.'},
+ {id:'x077',icon:'☀️',name:'آفتاب‌پرست',gene:'heatRes',desc:'نور خورشید به او انرژی می‌دهد.'},
+ {id:'x078',icon:'🌪️',name:'طوفان‌نورد',gene:'size',desc:'در طوفان هم سر جایش می‌ایستد و جابه‌جا نمی‌شود.'},
+ {id:'x079',icon:'🌊',name:'شناگر',gene:'efficiency',desc:'در زمین‌های خیس سریع‌تر حرکت می‌کند.'},
+ {id:'x080',icon:'🏜️',name:'کویرنورد',gene:'heatRes',desc:'به گرما و خشکی کویر عادت کرده است.'},
+ {id:'x081',icon:'⛷️',name:'برف‌نورد',gene:'coldRes',desc:'روی برف راحت راه می‌رود و سرما اذیتش نمی‌کند.'},
+ {id:'x082',icon:'🌲',name:'جنگل‌نورد',gene:'vision',desc:'میان درخت‌ها هم راهش را گم نمی‌کند و غذا پیدا می‌کند.'},
+ {id:'x083',icon:'🦉',name:'شب‌زنده‌دار',gene:'vision',desc:'شب‌ها فعال است و وقتی بقیه خواب‌اند غذا جمع می‌کند.'},
+ {id:'x084',icon:'🌑',name:'استتار تاریک',gene:'mask',desc:'در تاریکی با محیط یکی می‌شود و دیده نمی‌شود.'},
+ {id:'x085',icon:'🍁',name:'استتار پاییزی',gene:'coat',desc:'رنگش با برگ‌ها یکی است و رقیب‌ها او را نمی‌بینند.'},
+ {id:'x086',icon:'🟢',name:'استتار سبز',gene:'coat',desc:'میان سبزه‌ها پنهان می‌شود و کسی متوجهش نمی‌شود.'},
+ {id:'x087',icon:'⚪',name:'پوشش برفی',gene:'coat',desc:'سفید است و در برف کاملاً پنهان می‌شود.'},
+ {id:'x088',icon:'🖤',name:'پوشش شبانه',gene:'mask',desc:'پوشش تیره‌اش او را در شب نامرئی می‌کند.'},
+ {id:'x089',icon:'☁️',name:'ابرنشین',gene:'coldRes',desc:'هوای سرد و ابری را دوست دارد و در آن سرحال است.'},
+ {id:'x090',icon:'⛰️',name:'بلندقد',gene:'size',desc:'قد بلندش باعث می‌شود غذا را از بالای سر بقیه ببیند.'},
+ /* --- دسته ۷: تغذیه و شکار (x091–x100) --- */
+ {id:'x091',icon:'🍖',name:'گوشت‌خوار',gene:'metabolism',desc:'غذاها برایش سیرکننده‌ترند و دیرتر گرسنه می‌شود.'},
+ {id:'x092',icon:'🥦',name:'گیاه‌خوار حرفه‌ای',gene:'metabolism',desc:'از غذاهای ساده هم خوب سیر می‌شود.'},
+ {id:'x093',icon:'🍯',name:'شیرین‌دوست',gene:'metabolism',desc:'با غذای کم هم سیر می‌شود.'},
+ {id:'x094',icon:'🦅',name:'شکارچی آسمان',gene:'speed',desc:'از بالا غذا را نشانه می‌گیرد و با سرعت می‌قاپد.'},
+ {id:'x095',icon:'🕷️',name:'تله‌گذار',gene:'efficiency',desc:'کمین می‌کند و بدون دویدن زیاد غذا به دست می‌آورد.'},
+ {id:'x096',icon:'🐍',name:'کمین‌گر',gene:'efficiency',desc:'بی‌حرکت صبر می‌کند تا غذا به او نزدیک شود.'},
+ {id:'x097',icon:'🦷',name:'دندان‌های تیز',gene:'aggression',desc:'غذای سفت را هم راحت می‌خورد و سر غذا می‌جنگد.'},
+ {id:'x098',icon:'🤝',name:'شکارچی گروهی',gene:'cooperation',desc:'با هم شکار می‌کنند و غذای بزرگ را تقسیم می‌کنند.'},
+ {id:'x099',icon:'🏃',name:'شکارچی دونده',gene:'speed',desc:'شکارش را با دویدن دنبال می‌کند تا خسته شود.'},
+ {id:'x100',icon:'🧺',name:'جمع‌کننده‌ی غذا',gene:'efficiency',desc:'غذا را جمع می‌کند و ذخیره می‌کند تا در قحطی استفاده کند.'},
 ];
 const NAME_A=['آرا','نیلا','کیان','سارا','داریوش','مهسا','آرش','نگار','پارسا','ترانه','رادین','یاسمین','بردیا','آیدا','سهراب','لیلا','کاوه','نازنین','ارشیا','ستاره'];
 const NAME_B=['','‌نژاد','‌زاده','‌پور','‌فر','‌کیا'];
@@ -129,6 +236,54 @@ const S={
 let W=800,H=600,DPR=1, foodAcc=0, statAcc=0, chartAcc=0;
 const canvas=$('#world'), ctx=canvas.getContext('2d');
 
+/* ---------------- کش اسپرایت (پرفورمنس) ----------------
+   ظاهر هر موجود (هاله + بدن + چشم‌ها) یک بار در یک بوم آفسکرین رندر می‌شود
+   و در هر فریم فقط با drawImage کپی می‌شود — به‌جای ~۸ قوس در هر فریم.
+   کلید کش: سطل رنگ (۲۴ سطل) × سطل جثه (۸ سطل) × تیره/روشن. */
+const SPRITES=new Map();
+let foodSpriteCache=null, bgGrad=null, bgPhase='';
+function agentSprite(hue,sizeVal,dark){
+  const hueB=Math.round(hue/15)*15, sizeB=Math.round(sizeVal*7)/7;
+  const key=hueB+'|'+sizeB+'|'+(dark?1:0);
+  let s=SPRITES.get(key); if(s) return s;
+  const r=5+sizeB*7, pad=r*1.7+2, px=Math.ceil(pad*2*DPR);
+  const c=document.createElement('canvas'); c.width=px; c.height=px;
+  const g=c.getContext('2d'); g.scale(DPR,DPR); g.translate(pad,pad);
+  g.fillStyle=dark?'rgba(100,116,139,.28)':`hsla(${hueB} 80% 60% / .28)`;
+  g.beginPath(); g.arc(0,0,r*1.7,0,Math.PI*2); g.fill();
+  g.fillStyle=dark?'#1e293b':`hsl(${hueB} 75% 58%)`;
+  if(dark){g.strokeStyle='rgba(255,255,255,.25)';g.lineWidth=1.5;g.beginPath();g.arc(0,0,r,0,Math.PI*2);g.stroke();}
+  g.beginPath(); g.arc(0,0,r,0,Math.PI*2); g.fill();
+  // چشم‌ها رو به +x (در draw با rotate به جهت حرکت می‌چرخد)
+  g.fillStyle='#fff';
+  g.beginPath(); g.arc(r*0.45,r*0.32,r*0.22,0,Math.PI*2); g.fill();
+  g.beginPath(); g.arc(r*0.45,-r*0.32,r*0.22,0,Math.PI*2); g.fill();
+  g.fillStyle='#111';
+  g.beginPath(); g.arc(r*0.6,r*0.32,r*0.11,0,Math.PI*2); g.fill();
+  g.beginPath(); g.arc(r*0.6,-r*0.32,r*0.11,0,Math.PI*2); g.fill();
+  s={c,pad}; SPRITES.set(key,s); return s;
+}
+function foodSprite(){
+  if(foodSpriteCache) return foodSpriteCache;
+  const pad=12, r=5.25, px=Math.ceil(pad*2*DPR);
+  const c=document.createElement('canvas'); c.width=px; c.height=px;
+  const g=c.getContext('2d'); g.scale(DPR,DPR); g.translate(pad,pad);
+  g.fillStyle='rgba(52,211,153,.25)'; g.beginPath(); g.arc(0,0,r*2.1,0,Math.PI*2); g.fill();
+  g.fillStyle='#4ade80'; g.beginPath(); g.arc(0,0,r,0,Math.PI*2); g.fill();
+  g.fillStyle='#bbf7d0'; g.beginPath(); g.arc(-1.5,-1.5,r*0.35,0,Math.PI*2); g.fill();
+  foodSpriteCache={c,pad,r}; return foodSpriteCache;
+}
+function skyGrad(night,dusk){
+  const ph=night?'n':dusk?'d':'day';
+  if(!bgGrad||bgPhase!==ph){ bgPhase=ph;
+    const g=ctx.createLinearGradient(0,0,0,H);
+    if(night){g.addColorStop(0,'#0a1030');g.addColorStop(1,'#0d1a2e');}
+    else if(dusk){g.addColorStop(0,'#2b1d4e');g.addColorStop(1,'#3a2b1e');}
+    else {g.addColorStop(0,'#0e2a24');g.addColorStop(1,'#123a2a');}
+    bgGrad=g; }
+  return bgGrad;
+}
+
 /* ---------------- ابزار جهان ---------------- */
 function logEvent(text,kind=''){
   const li=document.createElement('li'); if(kind) li.className=kind;
@@ -150,6 +305,8 @@ function tempNow(){
 function burst(x,y,color,n=14,pow=120){
   for(let i=0;i<n;i++){const a=rand(Math.PI*2),s=rand(20,pow);
     S.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.4,.9),max:.9,color,r:rand(1.5,3.5)});}
+  if(S.parts.length>300) S.parts.splice(0,S.parts.length-300); // سقف ذره‌ها
+  if(S.floaters.length>80) S.floaters.splice(0,S.floaters.length-80);
 }
 function floater(x,y,text,color='#fff'){S.floaters.push({x,y,text,color,life:1.4});}
 function geneAvg(){const g={}; if(!S.agents.length) return g;
@@ -382,9 +539,9 @@ function tick(dt){
   // تاریخچه
   if(S.elapsed-S.lastHist>0.6){ S.lastHist=S.elapsed;
     S.historyPop.push(S.agents.length); if(S.historyPop.length>240) S.historyPop.shift();
-    const top=[...TRAITS].sort((x,y)=>traitFreq(y)-traitFreq(x)).slice(0,3)
-      .map(t=>({id:t.id,name:t.name,val:Math.round(traitFreq(t))}));
-    S.historyTraits.push(top); if(S.historyTraits.length>240) S.historyTraits.shift();
+    const topFreqs=TRAITS.map(t=>({id:t.id,name:t.name,val:Math.round(traitFreq(t))}));
+    topFreqs.sort((a,b)=>b.val-a.val); // فرکانس هر ویژگی فقط یک بار حساب می‌شود
+    S.historyTraits.push(topFreqs.slice(0,3)); if(S.historyTraits.length>240) S.historyTraits.shift();
     const snap={}; Object.keys(GENE_LABELS).forEach(k=>snap[k]=alleleFreq(k));
     S.historyAllele.push(snap); if(S.historyAllele.length>240) S.historyAllele.shift();
   }
@@ -399,27 +556,24 @@ function resize(){
   W=Math.max(320,r.width); H=Math.max(320,r.height);
   canvas.width=W*DPR; canvas.height=H*DPR; canvas.style.width=W+'px'; canvas.style.height=H+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  bgGrad=null; SPRITES.clear(); foodSpriteCache=null; // کش‌ها با اندازه‌ی تازه بازسازی می‌شوند
 }
 function draw(){
-  // آسمان / زمین
+  // آسمان / زمین (گرادیان فقط وقتی فاز روز عوض شود ساخته می‌شود)
   const night=S.timeOfDay<6||S.timeOfDay>19, dusk=(S.timeOfDay>17&&S.timeOfDay<20)||(S.timeOfDay>5&&S.timeOfDay<7);
-  const g=ctx.createLinearGradient(0,0,0,H);
-  if(night){g.addColorStop(0,'#0a1030');g.addColorStop(1,'#0d1a2e');}
-  else if(dusk){g.addColorStop(0,'#2b1d4e');g.addColorStop(1,'#3a2b1e');}
-  else {g.addColorStop(0,'#0e2a24');g.addColorStop(1,'#123a2a');}
-  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=skyGrad(night,dusk); ctx.fillRect(0,0,W,H);
   // تپه‌های نرم
   ctx.fillStyle=night?'rgba(255,255,255,.03)':'rgba(255,255,255,.045)';
   for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(W*(0.2+i*0.3),H+40,W*0.45,90,0,Math.PI,0);ctx.fill();}
   // لاشه‌ها
   for(const c of S.corpses){ctx.globalAlpha=clamp(c.life/14,0,1)*.5;ctx.fillStyle='#94a3b8';
     ctx.beginPath();ctx.arc(c.x,c.y,c.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
-  // غذا
+  // غذا (اسپرایت کش‌شده)
+  const fs=foodSprite();
   for(const f of S.foods){
     const p=1+Math.sin(S.elapsed*3+f.pulse)*0.18;
-    ctx.fillStyle='rgba(52,211,153,.25)';ctx.beginPath();ctx.arc(f.x,f.y,f.r*2.1*p,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#4ade80';ctx.beginPath();ctx.arc(f.x,f.y,f.r*p,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#bbf7d0';ctx.beginPath();ctx.arc(f.x-1.5,f.y-1.5,f.r*0.35,0,Math.PI*2);ctx.fill();
+    const w=fs.pad*2*(f.r*p/fs.r);
+    ctx.drawImage(fs.c,f.x-w/2,f.y-w/2,w,w);
   }
   // موجودات
   for(const a of S.agents){
@@ -430,20 +584,9 @@ function draw(){
       ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;ctx.beginPath();ctx.arc(a.x,a.y,r+7+Math.sin(S.elapsed*5)*2,0,Math.PI*2);ctx.stroke();ctx.lineWidth=1;}
     if(a.plague>0){ctx.fillStyle='rgba(132,204,22,.3)';ctx.beginPath();ctx.arc(a.x,a.y,r+5,0,Math.PI*2);ctx.fill();}
     const darkCoat=coatIsDark(a);
-    // هاله‌ی ارزان به‌جای shadowBlur (سایه‌ی تار در هر فریم کند است)
-    ctx.fillStyle=darkCoat?'rgba(100,116,139,.28)':`hsla(${a.hue} 80% 60% / .28)`;
-    ctx.beginPath();ctx.arc(a.x,a.y,r*1.7,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle=darkCoat?'#1e293b':`hsl(${a.hue} 75% 58%)`;
-    if(darkCoat){ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(a.x,a.y,r,0,Math.PI*2);ctx.stroke();}
-    ctx.beginPath();ctx.arc(a.x,a.y,r,0,Math.PI*2);ctx.fill();
-    // چشم‌ها در جهت حرکت
-    const ex=Math.cos(a.angle),ey=Math.sin(a.angle),px=-ey,py=ex;
-    ctx.fillStyle='#fff';
-    ctx.beginPath();ctx.arc(a.x+ex*r*0.45+px*r*0.32,a.y+ey*r*0.45+py*r*0.32,r*0.22,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(a.x+ex*r*0.45-px*r*0.32,a.y+ey*r*0.45-py*r*0.32,r*0.22,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#111';
-    ctx.beginPath();ctx.arc(a.x+ex*r*0.6+px*r*0.32,a.y+ey*r*0.6+py*r*0.32,r*0.11,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(a.x+ex*r*0.6-px*r*0.32,a.y+ey*r*0.6-py*r*0.32,r*0.11,0,Math.PI*2);ctx.fill();
+    const spr=agentSprite(a.hue,a.genes.size,darkCoat);
+    ctx.save(); ctx.translate(a.x,a.y); ctx.rotate(a.angle);
+    ctx.drawImage(spr.c,-spr.pad,-spr.pad,spr.pad*2,spr.pad*2); ctx.restore();
     // نوار انرژی بالای سر وقتی گرسنه یا انتخاب‌شده
     if(sel||a.energy<30){ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(a.x-r,a.y-r-9,r*2,4);
       ctx.fillStyle=a.energy<25?'#f43f5e':'#f59e0b';ctx.fillRect(a.x-r,a.y-r-9,r*2*(a.energy/100),4);}
@@ -558,8 +701,17 @@ function removeTrait(t){
   let n=0; for(const a of S.agents){ if(a.genes[t.gene]>=0.72){setGenotypeLow(a,t.gene);n++;} }
   logEvent('🧹 ویژگی «'+t.name+'» از '+fa(n)+' موجود حذف شد (ژن به aa برگشت).','god'); toast('ویژگی «'+t.name+'» حذف شد');
 }
-function buildTraits(){
-  $('#traitList').innerHTML=TRAITS.map(t=>`<div class="trait" id="tr-${t.id}">
+let traitPage=0, traitQuery='', traitGene='';
+const TRAITS_PER_PAGE=50;
+function traitFiltered(){
+  return TRAITS.filter(t=>(!traitGene||t.gene===traitGene)&&(!traitQuery||t.name.includes(traitQuery)||t.desc.includes(traitQuery)));
+}
+function renderTraitPage(){
+  const list=traitFiltered();
+  const pages=Math.max(1,Math.ceil(list.length/TRAITS_PER_PAGE));
+  traitPage=clamp(traitPage,0,pages-1);
+  const start=traitPage*TRAITS_PER_PAGE, page=list.slice(start,start+TRAITS_PER_PAGE);
+  $('#traitList').innerHTML=page.map(t=>`<div class="trait" id="tr-${t.id}">
     <div class="trait-head"><span class="trait-ico">${t.icon}</span><div><b>${t.name}</b><small>${t.desc}</small></div>
     <div class="trait-freq"><b id="tf-${t.id}">٪۰</b><span>فراوانی</span></div></div>
     <div class="freq-bar"><i id="tb-${t.id}" style="width:0%"></i></div>
@@ -569,7 +721,10 @@ function buildTraits(){
       <button class="btn inject" type="button" data-act="i50">تزریق ۵۰٪</button>
       <button class="btn inject" type="button" data-act="i100">تزریق همه</button>
       <button class="btn remove" type="button" data-act="rm">🗑 حذف</button>
-    </div></div>`).join('');
+    </div></div>`).join('')||'<p class="note">ویژگی‌ای پیدا نشد.</p>';
+  $('#traitPageInfo').textContent=list.length?('نمایش '+fa(start+1)+' تا '+fa(Math.min(start+TRAITS_PER_PAGE,list.length))+' از '+fa(list.length)+' ویژگی'):'۰ ویژگی';
+  $('#traitPrev').disabled=traitPage===0;
+  $('#traitNext').disabled=traitPage>=pages-1;
   $$('#traitList .trait').forEach(el=>{
     const t=TRAITS.find(x=>x.id===el.id.slice(3));
     el.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',()=>{
@@ -579,6 +734,13 @@ function buildTraits(){
       updateStats();
     }));
   });
+}
+function buildTraits(){
+  renderTraitPage();
+  $('#traitSearch').addEventListener('input',e=>{traitQuery=e.target.value.trim();traitPage=0;renderTraitPage();});
+  $('#traitGeneFilter').addEventListener('change',e=>{traitGene=e.target.value;traitPage=0;renderTraitPage();});
+  $('#traitPrev').addEventListener('click',()=>{traitPage--;renderTraitPage();});
+  $('#traitNext').addEventListener('click',()=>{traitPage++;renderTraitPage();});
   renderCustomTraits();
 }
 function renderCustomTraits(){
@@ -642,10 +804,9 @@ function updateStats(){
   const byLin={}; for(const a of S.agents){(byLin[a.lineage]=byLin[a.lineage]||{n:0,hue:a.hue}).n++;}
   const topLin=Object.entries(byLin).sort((a,b)=>b[1].n-a[1].n).slice(0,5);
   $('#lineageList').innerHTML=topLin.map(([id,v],i)=>`<div class="lin-row"><span><span class="lin-dot" style="background:hsl(${v.hue} 75% 58%)"></span>تبار ${fa(id)} ${i===0?'👑':''}</span><b>${fa(v.n)} موجود</b></div>`).join('')||'<p class="note">هنوز موجودی نیست.</p>';
-  const top3=[...TRAITS].sort((a,b)=>traitFreq(b)-traitFreq(a)).slice(0,3);
-  $('#topTraitsNote').textContent='برترین ویژگی‌ها حالا: '+top3.map(t=>t.name+' ٪'+fa(Math.round(traitFreq(t)))).join(' • ');
-  $('#freqList').innerHTML=[...TRAITS].sort((a,b)=>traitFreq(b)-traitFreq(a)).map(t=>{const f=traitFreq(t);
-    return `<div class="freq-row"><span>${t.icon} ${t.name}</span><div class="bar"><i style="width:${f}%"></i></div><b>٪${fa(Math.round(f))}</b></div>`;}).join('');
+  const allFreq=TRAITS.map(t=>({t,f:traitFreq(t)})).sort((a,b)=>b.f-a.f);
+  $('#topTraitsNote').textContent='برترین ویژگی‌ها حالا: '+allFreq.slice(0,3).map(x=>x.t.name+' ٪'+fa(Math.round(x.f))).join(' • ');
+  $('#freqList').innerHTML=allFreq.slice(0,15).map(x=>`<div class="freq-row"><span>${x.t.icon} ${x.t.name}</span><div class="bar"><i style="width:${x.f}%"></i></div><b>٪${fa(Math.round(x.f))}</b></div>`).join('');
   $('#deathList').innerHTML=Object.entries(S.deathsBy).map(([k,v])=>`<div class="death-row"><span>💀 ${k}</span><b>${fa(v)}</b></div>`).join('');
   const avg=geneAvg();
   $('#avgGenes').innerHTML=Object.entries(GENE_LABELS).map(([k,label])=>`<div class="avg-row"><span>${label}</span><b>${avg[k]!=null?'٪'+fa(Math.round(avg[k]*100)):'—'}</b></div>`).join('');
@@ -687,8 +848,9 @@ function updateSelected(keep){
     const hidden=!poly&&GEN_RULES[k].dominant&&str==='Aa';
     return `<span class="gtype${poly?' poly':''}">${label}: <b>${str}</b>${hidden?' <span class="hidden-allele">حامل پنهان</span>':''}${poly?' (چندژنی)':''}</span>`;
   }).join('');
-  const traits=TRAITS.filter(t=>a.genes[t.gene]>=0.72).map(t=>`<span class="pill">${t.icon} ${t.name}</span>`).join('');
-  $('#selTraits').innerHTML=traits||'<span style="color:var(--muted)">ویژگی برجسته‌ای ندارد — هنوز معمولی است.</span>';
+  const traitPills=TRAITS.filter(t=>a.genes[t.gene]>=0.72);
+  const pillsHtml=traitPills.slice(0,8).map(t=>`<span class="pill">${t.icon} ${t.name}</span>`).join('')+(traitPills.length>8?` <span class="pill more">+${fa(traitPills.length-8)} ویژگی دیگر</span>`:'');
+  $('#selTraits').innerHTML=pillsHtml||'<span style="color:var(--muted)">ویژگی برجسته‌ای ندارد — هنوز معمولی است.</span>';
   $('#selFamily').textContent=(a.parentNames?'والدین: '+a.parentNames+' • ':'')+'فرزندان: '+fa(a.children)+' • '+(a.plague>0?'🦠 بیمار است!':'سالم است')+(coatIsDark(a)?' • 🌑 پوشش تیره (اپیستازی)':'');
   $('#btnFollow').textContent=S.follow?'👁 در حال دنبال‌کردن — لغو':'👁 دنبال‌کردن';
   renderPunnettMini();
@@ -947,7 +1109,7 @@ function loop(now){
   statAcc+=rawDt;
   if(statAcc>0.25){ statAcc=0; updateStats(); }
   chartAcc+=rawDt;
-  if(chartAcc>0.5){ chartAcc=0; drawLineChart($('#chartPop'),S.historyPop,'جمعیت: '+fa(S.agents.length),'#34d399'); drawTraitChart(); drawAlleleChart(); }
+  if(chartAcc>1){ chartAcc=0; drawLineChart($('#chartPop'),S.historyPop,'جمعیت: '+fa(S.agents.length),'#34d399'); drawTraitChart(); drawAlleleChart(); }
   requestAnimationFrame(loop);
 }
 

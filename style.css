@@ -134,6 +134,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .power.armed-btn{outline:2px solid var(--gold);background:rgba(245,158,11,.22)}
 
 /* traits */
+.trait-search{display:flex;gap:8px;margin-bottom:10px}
+.trait-search input[type=search]{flex:2;min-width:0;background:#0b1230;color:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;font-family:inherit}
+.trait-search select{flex:1;min-width:0;background:#0b1230;color:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 8px;font-size:13px;font-family:inherit}
+.trait-pager{display:flex;align-items:center;gap:8px;margin:4px 0 12px}
+.trait-pager span{flex:1;text-align:center;font-size:12.5px;color:var(--muted)}
+.trait-pager .btn:disabled{opacity:.35;cursor:default}
 .trait-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .trait-tools .btn{flex:1}
 .trait{border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px;
