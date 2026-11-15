@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#070b1a">
+<title>خدای جهان کوچک — شبیه‌ساز زندگی</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">🌍</div>
+    <div class="brand-text">
+      <h1>خدای جهان کوچک</h1>
+      <p>شبیه‌ساز زندگی، ژنتیک و تکامل</p>
+    </div>
+  </div>
+  <div class="clock" id="clockBox" title="تقویم جهان">
+    <span class="clock-day" id="clockDay">روز ۱</span>
+    <span class="clock-season" id="clockSeason">🌸 بهار</span>
+    <span class="clock-temp" id="clockTemp">۲۰°</span>
+    <span class="clock-time" id="clockTime">۰۸:۰۰</span>
+  </div>
+  <div class="top-actions">
+    <button id="btnPlay" class="btn btn-primary" type="button" aria-label="توقف یا ادامه">⏸ توقف</button>
+    <button id="btnSpeed" class="btn btn-glass" type="button">⚡ سرعت ×۱</button>
+    <button id="btnStep" class="btn btn-glass" type="button" title="یک قدم جلو">⏭ قدم</button>
+    <button id="btnReset" class="btn btn-danger" type="button">🔄 دنیای تازه</button>
+    <button id="btnPanel" class="btn btn-glass panel-toggle" type="button" aria-label="باز و بسته کردن پنل">🎛 پنل</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="stage" id="stage">
+    <canvas id="world" touch-action="none"></canvas>
+    <div class="chips" id="chips">
+      <div class="chip"><span class="chip-ico">👥</span><span class="chip-label">جمعیت</span><b id="statPop">۰</b></div>
+      <div class="chip"><span class="chip-ico">🍎</span><span class="chip-label">غذا</span><b id="statFood">۰</b></div>
+      <div class="chip"><span class="chip-ico">👶</span><span class="chip-label">تولد</span><b id="statBirths">۰</b></div>
+      <div class="chip"><span class="chip-ico">💀</span><span class="chip-label">مرگ</span><b id="statDeaths">۰</b></div>
+      <div class="chip"><span class="chip-ico">🧬</span><span class="chip-label">نسل میانگین</span><b id="statGen">۰</b></div>
+      <div class="chip"><span class="chip-ico">⚔️</span><span class="chip-label">جنگ</span><b id="statFights">۰</b></div>
+    </div>
+    <div class="hint" id="hint">روی یک موجود بزن تا انتخابش کنی • دو بار بزن = باران غذا • با قدرت خدا روی زمین بزن</div>
+    <div class="armed" id="armedBar" hidden>⚡ قدرت <b id="armedName"></b> آماده است — روی زمین بزن <button id="btnDisarm" type="button">لغو ✕</button></div>
+
+    <article class="selected" id="selectedCard" hidden>
+      <button class="selected-close" id="btnCloseSelected" type="button" aria-label="بستن">✕</button>
+      <div class="sel-head">
+        <span class="sel-dot" id="selDot"></span>
+        <div><h2 id="selName">—</h2><p id="selMeta">—</p></div>
+        <span class="sel-sex" id="selSex">—</span>
+      </div>
+      <div class="bar-row"><span>🍖 گرسنگی</span><div class="bar"><i id="selHunger" style="width:50%"></i></div><b id="selHungerTxt">۵۰٪</b></div>
+      <div class="bar-row"><span>❤️ سلامتی</span><div class="bar"><i id="selHealth" class="hp" style="width:80%"></i></div><b id="selHealthTxt">۸۰٪</b></div>
+      <div class="bar-row"><span>⏳ عمر</span><div class="bar"><i id="selAge" class="age" style="width:20%"></i></div><b id="selAgeTxt">—</b></div>
+      <div class="bar-row"><span>🧬 هم‌خونی</span><div class="bar"><i id="selInbreed" class="age" style="width:0%"></i></div><b id="selInbreedTxt">۰٪</b></div>
+      <div class="sel-genes" id="selGenes"></div>
+      <h4 class="sel-sub">ژنوتیپ (مندل: AA / Aa / aa)</h4>
+      <div class="sel-genotype" id="selGenotype"></div>
+      <p class="sel-traits" id="selTraits"></p>
+      <p class="sel-family" id="selFamily">—</p>
+      <div class="punnett-mini" id="punnettMini" hidden></div>
+      <div class="sel-actions">
+        <button id="btnFollow" class="btn btn-glass" type="button">👁 دنبال‌کردن</button>
+        <button id="btnFeedOne" class="btn btn-glass" type="button">🍎 غذا بده</button>
+        <button id="btnTraitOne" class="btn btn-glass" type="button">🧬 ویژگی بده</button>
+        <button id="btnPickMate" class="btn btn-glass" type="button">💞 والد دوم</button>
+        <button id="btnKillOne" class="btn btn-danger" type="button">⚡ حذفش کن</button>
+      </div>
+    </article>
+
+    <div class="extinct" id="extinctBox" hidden>
+      <div class="extinct-inner">
+        <div class="extinct-ico">💀</div>
+        <h2>انقراض!</h2>
+        <p>همه‌ی موجودات این جهان از بین رفتند.<br>خدا می‌تواند دوباره بیافریند.</p>
+        <button id="btnRebirth" class="btn btn-primary btn-big" type="button">🌱 آفرینش دوباره</button>
+      </div>
+    </div>
+    <div class="toast" id="toast" hidden></div>
+  </section>
+
+  <aside class="panel" id="panel">
+    <div class="panel-handle" id="panelHandle" aria-hidden="true"></div>
+    <nav class="tabs" role="tablist" aria-label="بخش‌های پنل">
+      <button class="tab active" data-tab="god" type="button">⛈ خدا</button>
+      <button class="tab" data-tab="traits" type="button">🧬 ویژگی‌ها</button>
+      <button class="tab" data-tab="genetics" type="button">🧪 ژنتیک</button>
+      <button class="tab" data-tab="stats" type="button">📊 آمار</button>
+      <button class="tab" data-tab="log" type="button">📜 رویدادها</button>
+      <button class="tab" data-tab="guide" type="button">📖 راهنما</button>
+    </nav>
+
+    <!-- GOD -->
+    <section class="tab-page active" id="tab-god">
+      <h3>⚙️ تنظیمات جهان</h3>
+      <div class="sliders" id="sliders"></div>
+
+      <h3>🌦 سناریوهای آماده <span class="sub">یک آزمایش با یک لمس</span></h3>
+      <div class="preset-grid" id="presetGrid"></div>
+
+      <h3>⛈ قدرت‌های خدا <span class="sub">یکی را انتخاب کن، بعد روی زمین بزن</span></h3>
+      <div class="power-grid" id="powerGrid"></div>
+      <p class="note">💡 نکته: صاعقه و شهاب روی نقطه‌ای که می‌زنی فرود می‌آیند. باران غذا همان‌جا غذا می‌ریزد. طاعون از یک موجود شروع می‌شود و به نزدیکان سرایت می‌کند.</p>
+
+      <h3>👥 جمعیت</h3>
+      <div class="row-btns">
+        <button class="btn btn-glass" id="btnAdd10" type="button">➕ ۱۰ موجود</button>
+        <button class="btn btn-glass" id="btnAddFood" type="button">🍎 باران غذا</button>
+        <button class="btn btn-danger" id="btnKill10" type="button">💀 کشتن ۱۰ تصادفی</button>
+        <button class="btn btn-glass" id="btnMigrant" type="button">🧳 ورود مهاجر</button>
+        <button class="btn btn-danger" id="btnBottleneck" type="button">🍼 گلوگاه (۱۰ نفر)</button>
+      </div>
+      <h3>💾 ذخیره و خروجی</h3>
+      <div class="row-btns">
+        <button class="btn btn-glass" id="btnSave" type="button">💾 ذخیره جهان</button>
+        <button class="btn btn-glass" id="btnLoad" type="button">📂 بارگذاری ذخیره</button>
+        <button class="btn btn-glass" id="btnExport" type="button">📥 خروجی آمار (JSON)</button>
+        <button class="btn btn-glass" id="btnExportLog" type="button">📜 خروجی رویدادها</button>
+      </div>
+      <p class="note small">ذخیره در همین مرورگر نگه داشته می‌شود. خروجی JSON را می‌توانی نگه داری یا با دوستانت به اشتراک بگذاری.</p>
+    </section>
+
+    <!-- TRAITS -->
+    <section class="tab-page" id="tab-traits">
+      <h3>🧬 آزمایشگاه ویژگی‌ها</h3>
+      <p class="note">یک ویژگی را به بخشی از جمعیت تزریق کن و ببین در نسل‌های بعد چطور پخش می‌شود. نمودار «آمار» فراوانی هر ویژگی را زنده نشان می‌دهد.</p>
+      <div class="trait-tools">
+        <button class="btn btn-glass" id="btnRandomMut" type="button">🎲 جهش تصادفی در همه</button>
+        <button class="btn btn-glass" id="btnShuffleGenes" type="button">🔀 به‌هم‌ریختن ژن‌ها</button>
+      </div>
+      <div class="trait-list" id="traitList"></div>
+
+      <h3>✨ ساخت ویژگی دلخواه</h3>
+      <div class="custom-trait">
+        <label>نام ویژگی <input id="ctName" type="text" placeholder="مثلاً: پوست آهنی" maxlength="24"></label>
+        <label>ژن هدف
+          <select id="ctGene">
+            <option value="speed">سرعت</option><option value="vision">بینایی</option>
+            <option value="size">جثه و قدرت</option><option value="aggression">پرخاشگری</option>
+            <option value="metabolism">متابولیسم (۱ = کند و کم‌مصرف)</option>
+            <option value="fertility">باروری</option><option value="cooperation">همکاری</option>
+            <option value="coldRes">مقاومت به سرما</option><option value="heatRes">مقاومت به گرما</option>
+            <option value="lifespan">طول عمر</option><option value="efficiency">بازده حرکت</option>
+            <option value="immunity">ایمنی در برابر طاعون</option>
+          </select>
+        </label>
+        <label>قدرت <input id="ctPower" type="range" min="0.6" max="1" step="0.05" value="0.9"> <b id="ctPowerTxt">۰٫۹</b></label>
+        <div class="row-btns">
+          <button class="btn btn-primary" id="btnCreateTrait" type="button">🧬 ساخت و تزریق به ۲۵٪</button>
+        </div>
+        <div class="custom-list" id="customTraitList"></div>
+      </div>
+    </section>
+
+    <!-- GENETICS LAB -->
+    <section class="tab-page" id="tab-genetics">
+      <h3>🧪 آزمایشگاه ژنتیک <span class="sub">قوانین واقعی، قابل ویرایش</span></h3>
+      <p class="note">هر ژن دو آلل دارد: یکی از پدر، یکی از مادر. آلل <b>A</b> بزرگ و <b>a</b> کوچک است. ژنوتیپ می‌تواند <b>AA</b> ،<b>Aa</b> یا <b>aa</b> باشد. اگر آلل A غالب باشد، Aa هم مثل AA دیده می‌شود و فقط aa ویژگی مغلوب را نشان می‌دهد — و برعکس، اگر غالب بودن را جابه‌جا کنی. سرعت، بینایی و جثه چندژنی‌اند: حاصل جمع ۳ جایگاه ژنی + کمی اثر محیط.</p>
+      <div class="row-btns">
+        <button class="btn btn-danger" id="btnBottleneck2" type="button">🍼 گلوگاه: فقط ۱۰ نفر بمانند</button>
+        <button class="btn btn-glass" id="btnFounder" type="button">🌱 اثر بنیان‌گذار: ۵ نفر</button>
+        <button class="btn btn-glass" id="btnMigrant2" type="button">🧳 ورود ۸ مهاجر</button>
+        <button class="btn btn-glass" id="btnResetRules" type="button">🔬 بازنشانی قوانین به حالت علمی استاندارد</button>
+      </div>
+      <h3>💞 انتخاب جنسی</h3>
+      <div class="custom-trait">
+        <label>ماده‌ها چه نری را ترجیح می‌دهند؟
+          <select id="matePref">
+            <option value="none">بدون ترجیح (تصادفی)</option>
+            <option value="speed">نرهای سریع‌تر</option>
+            <option value="size">نرهای بزرگ‌تر</option>
+            <option value="both">سریع‌تر و بزرگ‌تر</option>
+          </select>
+        </label>
+        <label>قدرت ترجیح <input id="matePrefStrength" type="range" min="0" max="1" step="0.1" value="0.6"> <b id="matePrefStrengthTxt">۰٫۶</b></label>
+      </div>
+      <h3>🧬 جدول پانت (Punnett)</h3>
+      <p class="note">یک موجود را انتخاب کن، بعد دکمه «💞 والد دوم» را بزن و موجود دوم را روی زمین انتخاب کن. احتمال ژنوتیپ فرزندشان برای هر ژن اینجا نشان داده می‌شود.</p>
+      <div class="punnett" id="punnettBox"><p class="note">هنوز دو والد انتخاب نشده‌اند.</p></div>
+      <h3>⚙️ قوانین هر ژن</h3>
+      <div id="geneRules"></div>
+      <p class="note small">اپیستازی: ژن «پوشش تیره» روی ژن «رنگ پوشش» سوار است — اگر پوشش تیره ظاهر شود، بدن تیره می‌شود هرچقدر هم رنگ پوشش روشن باشد. در راهنما مثالش را ببین.</p>
+    </section>
+
+    <!-- GUIDE -->
+    <section class="tab-page" id="tab-guide">
+      <h3>📖 راهنمای ژنتیک — به زبان ساده</h3>
+      <div class="guide-list" id="guideList"></div>
+    </section>
+
+    <!-- STATS -->
+    <section class="tab-page" id="tab-stats">
+      <h3>📈 جمعیت در طول زمان</h3>
+      <canvas class="chart" id="chartPop" width="640" height="180"></canvas>
+      <h3>🧬 فرکانس آلل‌ها در طول زمان (p و q)</h3>
+      <div class="custom-trait">
+        <label>ژن مورد بررسی
+          <select id="alleleGeneSelect"></select>
+        </label>
+      </div>
+      <canvas class="chart" id="chartAllele" width="640" height="180"></canvas>
+      <div class="hw-box" id="hwBox"></div>
+      <p class="note" id="driftNote">شاخص رانش ژنتیکی: —</p>
+      <h3>🧬 فراوانی ۳ ویژگی برتر در طول زمان</h3>
+      <canvas class="chart" id="chartTraits" width="640" height="180"></canvas>
+      <p class="note" id="topTraitsNote">هنوز داده‌ای ثبت نشده — کمی صبر کن.</p>
+      <h3>🏆 برترین نژادها (تبارها)</h3>
+      <div class="lineages" id="lineageList"></div>
+      <h3>🧬 فراوانی ویژگی‌ها همین حالا</h3>
+      <div class="freq-list" id="freqList"></div>
+      <h3>📋 علت مرگ‌ها</h3>
+      <div class="deaths" id="deathList"></div>
+      <h3>📊 میانگین ژن‌های جمعیت</h3>
+      <div class="avg-genes" id="avgGenes"></div>
+    </section>
+
+    <!-- LOG -->
+    <section class="tab-page" id="tab-log">
+      <h3>📜 دفتر رویدادهای جهان</h3>
+      <div class="row-btns">
+        <button class="btn btn-glass" id="btnClearLog" type="button">🧹 پاک‌کردن دفتر</button>
+        <button class="btn btn-glass" id="btnCopyLog" type="button">📋 کپی رویدادها</button>
+      </div>
+      <ol class="log" id="eventLog"></ol>
+    </section>
+  </aside>
+</main>
+
+<footer class="foot">
+  <span>ساخته‌شده برای بازی با تکامل — همه‌چیز در همین صفحه و آفلاین کار می‌کند (به‌جز فونت).</span>
+  <span id="footFps">۶۰ فریم</span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
