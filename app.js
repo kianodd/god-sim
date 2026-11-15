@@ -322,7 +322,7 @@ function tick(dt){
 
   const temp=tempNow(), cold=temp<2, hot=temp>33;
   const crowded=S.agents.length/S.settings.popCap;
-  const fertFactor=crowded>=1?0.15:crowded>0.8?0.5:1;
+  const fertFactor=crowded>=1?0.05:crowded>0.8?0.5:1;
 
   for(const a of S.agents){
     if(a.dead) continue;
@@ -347,7 +347,7 @@ function tick(dt){
     const speed=(34+a.genes.speed*78)*(a.energy<25?1.25:1)*(a.plague>0?0.6:1);
     let mx=0,my=0,moving=false;
     const mate=(a.energy>68&&a.mateCd<=0&&a.age>0.4)?nearestMate(a):null;
-    if(mate&&Math.random()<fertFactor*dt*0.4){ const dx=mate.x-a.x,dy=mate.y-a.y,d=Math.hypot(dx,dy);
+    if(mate&&Math.random()<fertFactor*dt*0.25){ const dx=mate.x-a.x,dy=mate.y-a.y,d=Math.hypot(dx,dy);
       if(d<34){ reproduce(a,mate); }
       else {mx=dx/d;my=dy/d;moving=true;}
     } else {
