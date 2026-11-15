@@ -124,7 +124,7 @@ const S={
   mateSelected:null, pickMate:false, alleleGene:'speed',
   mutations:{neutral:0,beneficial:0,harmful:0},
   genetics:{matePref:'none',matePrefStrength:0.6},
-  settings:{popCap:120,foodRate:2.5,foodEnergy:25,hungerRate:1,mutation:0.08,temperature:20,dayLength:60},
+  settings:{popCap:120,foodRate:4,foodEnergy:25,hungerRate:1,mutation:0.08,temperature:20,dayLength:60},
 };
 let W=800,H=600,DPR=1, foodAcc=0, statAcc=0, chartAcc=0;
 const canvas=$('#world'), ctx=canvas.getContext('2d');
@@ -347,7 +347,7 @@ function tick(dt){
     const speed=(34+a.genes.speed*78)*(a.energy<25?1.25:1)*(a.plague>0?0.6:1);
     let mx=0,my=0,moving=false;
     const mate=(a.energy>68&&a.mateCd<=0&&a.age>0.4)?nearestMate(a):null;
-    if(mate&&Math.random()<fertFactor){ const dx=mate.x-a.x,dy=mate.y-a.y,d=Math.hypot(dx,dy);
+    if(mate&&Math.random()<fertFactor*dt*0.4){ const dx=mate.x-a.x,dy=mate.y-a.y,d=Math.hypot(dx,dy);
       if(d<34){ reproduce(a,mate); }
       else {mx=dx/d;my=dy/d;moving=true;}
     } else {
@@ -388,13 +388,14 @@ function tick(dt){
     const snap={}; Object.keys(GENE_LABELS).forEach(k=>snap[k]=alleleFreq(k));
     S.historyAllele.push(snap); if(S.historyAllele.length>240) S.historyAllele.shift();
   }
-  if(S.agents.length===0){ $('#extinctBox').hidden=false; logEvent('💀 انقراض! همه‌ی موجودات مردند.','bad'); }
+  if(S.agents.length===0){ if(!S.extinctShown){ S.extinctShown=true; $('#extinctBox').hidden=false; logEvent('💀 انقراض! همه‌ی موجودات مردند.','bad'); } }
+  else { $('#extinctBox').hidden=true; S.extinctShown=false; }
 }
 
 /* ---------------- رندر ---------------- */
 function resize(){
   const r=$('#stage').getBoundingClientRect();
-  DPR=Math.min(2,window.devicePixelRatio||1);
+  DPR=Math.min(1.5,window.devicePixelRatio||1);
   W=Math.max(320,r.width); H=Math.max(320,r.height);
   canvas.width=W*DPR; canvas.height=H*DPR; canvas.style.width=W+'px'; canvas.style.height=H+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -429,10 +430,12 @@ function draw(){
       ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;ctx.beginPath();ctx.arc(a.x,a.y,r+7+Math.sin(S.elapsed*5)*2,0,Math.PI*2);ctx.stroke();ctx.lineWidth=1;}
     if(a.plague>0){ctx.fillStyle='rgba(132,204,22,.3)';ctx.beginPath();ctx.arc(a.x,a.y,r+5,0,Math.PI*2);ctx.fill();}
     const darkCoat=coatIsDark(a);
+    // هاله‌ی ارزان به‌جای shadowBlur (سایه‌ی تار در هر فریم کند است)
+    ctx.fillStyle=darkCoat?'rgba(100,116,139,.28)':`hsla(${a.hue} 80% 60% / .28)`;
+    ctx.beginPath();ctx.arc(a.x,a.y,r*1.7,0,Math.PI*2);ctx.fill();
     ctx.fillStyle=darkCoat?'#1e293b':`hsl(${a.hue} 75% 58%)`;
-    ctx.shadowColor=darkCoat?'#64748b':`hsl(${a.hue} 80% 60%)`;ctx.shadowBlur=sel?16:7;
     if(darkCoat){ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(a.x,a.y,r,0,Math.PI*2);ctx.stroke();}
-    ctx.beginPath();ctx.arc(a.x,a.y,r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+    ctx.beginPath();ctx.arc(a.x,a.y,r,0,Math.PI*2);ctx.fill();
     // چشم‌ها در جهت حرکت
     const ex=Math.cos(a.angle),ey=Math.sin(a.angle),px=-ey,py=ex;
     ctx.fillStyle='#fff';

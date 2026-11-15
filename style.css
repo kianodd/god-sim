@@ -5,6 +5,7 @@
   --radius:18px; --shadow:0 12px 40px rgba(0,0,0,.45);
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{height:100%}
 body{
   margin:0; font-family:'Vazirmatn',system-ui,'Segoe UI',Tahoma,sans-serif; color:var(--text);
