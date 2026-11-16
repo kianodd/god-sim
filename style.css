@@ -322,6 +322,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 @media (max-width:640px){
   /* روی گوشی برچسب چیپ‌ها می‌ماند (به خواست کاربر: آیکون + متن)؛ فقط راهنمای پایین پنهان می‌شود */
   .hint{display:none}
+  /* v5: روی موبایل دکمه‌های زوم و نقشه‌ی کوچک پنهان‌اند — جابه‌جایی با کشیدن و زوم با نیشگون کار می‌کند */
+  .cam-controls{display:none}
+  #minimap{display:none}
   .chips{gap:6px}
   .chip{padding:6px 8px}
   .chip-label{font-size:11px}

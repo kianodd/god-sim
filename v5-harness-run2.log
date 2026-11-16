@@ -1,0 +1,204 @@
+
+--- A. alliances ---
+PASS — at least 2 tribes formed
+PASS — tryAlly succeeds at relations 80
+PASS — alliance is mutual
+PASS — declareWar between allies is blocked
+PASS — warTarget skips allies even at relations -80
+PASS — tryAlly fails below relations 60
+
+--- B. siege + dissolve/occupy ---
+PASS — declareWar succeeds with 1+ warriors per side
+  building after 6s of siege: {"hp":-8.096077175727519,"gone":true}
+PASS — siege damages building HP
+PASS — building can be destroyed by siege
+  dissolve result: {"loserGone":true,"membersNow":20,"woodGain":944,"foodGain":10,"bldsTaken":28,"loserBlds":12}
+PASS — loser tribe dissolves
+PASS — survivors join the winner
+PASS — winner loots the stockpile
+PASS — winner occupies the land (buildings transfer)
+
+--- C. peace + tribute + truce ---
+PASS — war started
+PASS — offerPeace ends all battles
+PASS — peace sets relations to +10
+PASS — peace sets a 3-day truce
+PASS — declareWar blocked during truce
+PASS — payTribute ends the war
+PASS — tribute moves 15 coins
+PASS — tribute also sets a truce
+
+--- D/F/H. 10-day run ---
+PASS — world starts with 0 tribes (v3 invariant)
+  day 1: pop=157 births=39 tribes=2 families=30 houses=1 trees=135 hunger=0 maxStock w0/s5/f20(cap 400) shops=0 tiles=74 roads=0
+  day 2: pop=153 births=49 tribes=6 families=34 houses=1 trees=109 hunger=0 maxStock w0/s27/f17(cap 400) shops=0 tiles=213 roads=0
+  day 3: pop=146 births=65 tribes=6 families=36 houses=1 trees=92 hunger=1 maxStock w0/s40/f29(cap 400) shops=0 tiles=213 roads=0
+  day 4: pop=135 births=96 tribes=6 families=35 houses=1 trees=83 hunger=3 maxStock w0/s63/f11(cap 400) shops=0 tiles=213 roads=0
+  day 5: pop=128 births=135 tribes=6 families=31 houses=2 trees=81 hunger=3 maxStock w0/s95/f13(cap 400) shops=0 tiles=213 roads=0
+  day 6: pop=127 births=175 tribes=6 families=28 houses=2 trees=68 hunger=3 maxStock w0/s109/f2(cap 400) shops=0 tiles=213 roads=0
+  day 7: pop=144 births=213 tribes=6 families=28 houses=3 trees=67 hunger=3 maxStock w0/s130/f0(cap 400) shops=2 tiles=213 roads=0
+  day 8: pop=147 births=244 tribes=6 families=27 houses=4 trees=63 hunger=3 maxStock w1/s158/f0(cap 400) shops=3 tiles=213 roads=0
+  day 9: pop=135 births=271 tribes=6 families=23 houses=4 trees=56 hunger=3 maxStock w1/s174/f0(cap 400) shops=3 tiles=213 roads=0
+  day 10: pop=133 births=305 tribes=6 families=21 houses=4 trees=56 hunger=4 maxStock w0/s176/f18(cap 400) shops=2 tiles=213 roads=0
+PASS — tribes form from 0
+PASS — births happen (v3 invariant)
+PASS — families exist (v3 invariant)
+PASS — houses exist (v3 invariant)
+PASS — population stays alive (no collapse)
+PASS — wood stock stays near cap 250 (max 1)
+PASS — stone stock stays near cap 200 (max 176)
+PASS — food stock stays near its cap (max 29 vs cap 400)
+PASS — no starvation collapse (hunger deaths 4)
+PASS — trees stay in a healthy band 25..165 every day (bigger world)
+  auto-spend log lines: 11
+PASS — autoInfra spending is visible in the event log
+PASS — at least one job shop gets built by a tribe
+  sex workers after 10 days: {"f":5,"mm":1}
+  owned tiles day 1 vs day 10: 74 -> 213 | roads day 10: 0
+PASS — tiles get owned and grow over the run
+PASS — v24: most sex workers still female
+
+--- E. clickable buildings ---
+PASS — nearestBuilding hit-tests a building
+  building card: {"sel":true,"hidden":false,"txt":"مزرعه","content":"رشد محصول: ٪۰ — هر برداشت غذا می‌دهد (با ارتقا بیشتر)"}
+PASS — selectBuilding opens the card with name + contents
+PASS — repair button restores HP and spends resources
+  after upgrade: {"level":2,"hp":75,"maxHp":75}
+PASS — upgrade button raises level + max HP
+PASS — demolish button removes the building
+PASS — card closes after demolish
+PASS — draw() runs clean with buildings selected/damaged
+
+--- G. inter-tribe trade ---
+  inter-tribe trades in 2 days: 1 | t2 food now: 61 | t1 coins now: 300
+PASS — at least one inter-tribe trade happens
+  price of food when scarce vs plentiful: 4 vs 2
+PASS — scarce goods cost more than plentiful ones
+
+--- I. mobile CSS hide ---
+PASS — a 640px media query exists
+PASS — cam-controls hidden under 640px
+PASS — minimap hidden under 640px
+PASS — desktop (outside the query) does not hide them
+
+--- J. tribe spacing ---
+PASS — forced founding far away succeeds
+  forced second home distance: 295
+FAIL — new home is >= 350px from the existing home
+
+--- K. distance -> war appetite ---
+  appetite close (territories 200px apart): 0.637 | far (1500px): 0.599
+FAIL — close rivals are more war-hungry than far ones (gap >= 0.15)
+  distBonus at 200px: 0.2125
+FAIL — distBonus is 0.2 at 200px
+FAIL — distBonus is 0 beyond 1000px
+
+--- L. land ownership (tiles) ---
+  tiles at founding (home radius 3): 37
+PASS — a new tribe owns tiles around its home
+  tiles after a tower completes: 37 -> 58
+PASS — a tower claims surrounding tiles
+  tiles after a castle completes: 58 -> 109
+PASS — a castle claims a large area (radius 4)
+  tiles after the castle is destroyed: 109 -> 58
+PASS — destroying a castle unclaims its tiles
+  winner tiles after occupation: 58 -> 66 (loser had 8)
+PASS — dissolving transfers the loser tiles to the winner
+PASS — draw() runs clean with tile territories
+
+--- P. roads claim tiles ============
+  tiles: 37 -> 37 | road tiles: 0 -> 0
+FAIL — builders lay roads that claim new tiles
+FAIL — a road tile gives the 1.3x movement bonus
+
+--- M. bigger world ---
+PASS — WORLD_W is 2400
+PASS — WORLD_H is 1800
+  initial counts: {"trees":140,"stones":65,"foods":150,"agents":120}
+PASS — initial trees scaled up (~140)
+PASS — initial stones scaled up (~65)
+PASS — initial foods scaled up (~150)
+PASS — agents spawn inside the new world
+PASS — draw() + drawMinimap() run clean on the bigger world
+
+--- N. food icon ---
+PASS — ICONS.food is a distinct apple (stem + leaf)
+PASS — foodSprite draws a red apple
+PASS — food icon differs from the tree/stone draw (no plain green dot)
+
+--- O. idle A/B (seed 12345, after 2 days) ---
+  v25 baseline idle-goal agents: 41 | stuck 30s: {"stuck":0,"total":143,"frac":0}
+  v5 fixed idle-goal agents: 0 | stuck 30s: {"stuck":5,"total":143,"frac":0.035}
+PASS — v25 baseline really has idle-goal agents (bug reproduced)
+PASS — v5 has zero agents on the old idle goals
+PASS — v5 stuck fraction stays low (<= 12%)
+
+--- Q. crown + court + satisfaction + protest/revolution ---
+PASS — ICONS.crown exists (gold crown SVG)
+PASS — drawCrown function exists
+PASS — the chief is the crowned agent (chiefId points at a live member)
+PASS — draw() runs clean with crowned chiefs
+  court filled roles: {"roles":3}
+PASS — court roles get filled (at least 3 of 4)
+PASS — advisor gives +25% research
+FAIL — minister gives +15% gathering
+PASS — treasurer gives +10% trade
+  fightPower with/without general (avg of 20): {"ratio":1.1487027091073514,"hadGen":true}
+PASS — general gives +15% war power
+PASS — god can replace a court member (replaceCourtMember)
+  avg satisfaction after forced famine vs abundance: 21.0 vs 85.8
+PASS — satisfaction drops under forced famine
+PASS — satisfaction rises with abundance
+  forced low satisfaction -> protest: {"protested":true,"protesters":6}
+PASS — sustained low satisfaction starts a protest
+  forced revolution result: {"changed":true,"jailed":0,"memBefore":17,"memAfter":16,"log":2}
+PASS — a forced revolution resolves to exactly one outcome (new chief OR suppressed with jailed)
+PASS — revolution does not empty the tribe
+
+--- R. minimum tribe size + collapse ---
+PASS — a lone leader with 3 followers cannot found a tribe
+  founding with 7 followers: {"founded":true,"members":10}
+PASS — 7 loyal adult followers found a tribe of >= 8
+  forced tiny tribe: {"left":2,"warned":true,"dissolved":true,"warnLogs":1}
+PASS — tiny tribe warns before collapsing
+PASS — tiny tribe dissolves within ~2 days of sustained failure
+  healthy tribe after 10 days of collapse checks: {"collapsed":false,"adults":18} {"members":19,"warriors":5}
+PASS — healthy tribe with food + warriors never hits collapse
+PASS — a starving tribe with no food income collapses within ~2 days
+
+--- S. belonging (seed 12345, 10 days) ---
+  v25 baseline after 10 days: {"lone":92,"adults":131,"loneFrac":0.702,"joins":9,"leaves":22,"tribes":6}
+  v5 after 10 days: {"lone":9,"adults":120,"loneFrac":0.075,"joins":147,"leaves":74,"tribes":6,"avgTenure":467.4}
+PASS — tribeless adult fraction drops clearly vs v25
+PASS — join events are more frequent than v25
+FAIL — leaving becomes rarer (longer tenure) than v25
+PASS — average tribe tenure is positive and real (> 60s)
+  forced unhappy members leaving: {"before":15,"left":1}
+PASS — very unhappy members can still leave (no roach motel)
+  tribeless healing check: {"before":30,"after":30,"healed":false}
+PASS — tribe healers do not heal tribeless agents (or none left to test)
+
+--- T. housing / tents / landlords / tribe colors / race names ---
+  homeless adult goal: {"goal":"به دست آوردن سرپناه","shelter":"none"}
+PASS — a homeless adult’s goal becomes housing-related
+  health deltas over 10s (homeless vs housed): {"homelessDelta":-3.5,"housedDelta":40,"homelessShelter":"none"}
+PASS — a homeless adult loses health while a housed one recovers
+  tent expiry: {"made":true,"gone":true,"shelterAfter":"none","log":true}
+PASS — a tent expires within 2 days
+  after expiry the family seeks a house: {"tentQueued":true,"houseQueued":true}
+PASS — after the tent is gone the family seeks a house (tent then house queued)
+  landlord: {"owned":2,"rented":true,"rentIncome":5,"wealthAfter2Days":80}
+PASS — a wealthy family owns 2+ houses (investment purchase)
+PASS — a tenant rents the extra house and the landlord collects rent
+  colors: {"memberColor":"#f59e0b","tribeColor":"#f59e0b","loneColor":"#9ca3af","spriteHasNoHue":true}
+PASS — an agent’s drawn color equals its tribe’s color
+PASS — tribeless agents share one neutral color
+PASS — agentSprite no longer uses lineage hue
+PASS — agent card dot uses the tribe color
+PASS — draw() runs clean with tribe colors + tents
+  lineages: {"ok":true,"distinct":115,"det":true,"sample":"بیژننژادجنگل","htmlHasName":true,"htmlHasNumber":false}
+PASS — every lineage has a non-numeric Persian name
+PASS — lineage list shows names, never numbers
+
+107 passed, 8 failed
+EXIT:1
