@@ -1897,25 +1897,27 @@ function jobScore(a,job){
 }
 function assignJobs(t){
   const members=tribeMembers(t).filter(a=>a.age>=0.4&&!a.dead);
+  // بازتوزیع کامل در هر فراخوانی (به‌جز شغل دستی کاربر و شغل رهبر): شغل‌ها چسبنده نیستند،
+  // چون چسبندگی باعث می‌شد شغل‌های اولِ فهرست همه‌ی اعضا را بگیرند و شغل‌های آخر (آهنگر، آشپز…)
+  // با وجود سهمیه و کارگرِ در دسترس همیشه صفر بمانند.
+  for(const a of members){ if(!a.manualJob&&a.id!==t.chiefId) a.job=null; }
   const counts={}; JOB_LIST.forEach(j=>counts[j]=0);
   for(const a of members) if(a.job) counts[a.job]=(counts[a.job]||0)+1;
-  for(const a of members){ if(a.job&&!a.manualJob&&counts[a.job]>(t.jobs[a.job]||0)){ counts[a.job]--; a.job=null; } }
-  // اولویت با شغل‌های حیاتی (دانشمند، سازنده) — قبیله‌ی بدون دانشمند هرگز فناوری نمی‌گیرد
-  const PRIORITY=['scholar','builder','farmer','healer','gatherer','woodcutter','miner','warrior','guard','hunter','herder','blacksmith','cook','trader','sexworker'];
-  for(const job of PRIORITY){
-    let need=(t.jobs[job]||0)-counts[job];
-    while(need>0){
-      const cand=members.filter(a=>!a.job).sort((x,y)=>jobScore(y,job)-jobScore(x,job))[0];
-      if(cand){ cand.job=job; counts[job]++; need--; continue; }
-      // کسی بیکار نیست: از شغلی که بیش از سهمیه دارد بگیر؛ و اگر شغل حیاتی صفر است، از پرجمعیت‌ترین شغل بگیر
-      let surplus=JOB_LIST.filter(j=>counts[j]>(t.jobs[j]||0)).sort((x,y)=>(counts[y]-(t.jobs[y]||0))-(counts[x]-(t.jobs[x]||0)))[0];
-      if(!surplus&&counts[job]===0){
-        surplus=JOB_LIST.filter(j=>counts[j]>1).sort((x,y)=>counts[y]-counts[x])[0];
-      }
-      if(!surplus) break;
-      const pull=members.filter(a=>a.job===surplus&&!a.manualJob).sort((x,y)=>jobScore(y,job)-jobScore(x,job))[0];
-      if(!pull) break;
-      counts[surplus]--; pull.job=job; counts[job]++; need--;
+  // اولویت با شغل‌های حیاتی (دانشمند، سازنده) — قبیله‌ی بدون دانشمند هرگز فناوری نمی‌گیرد.
+  // آهنگر و آشپز بلافاصله بعد از شغل‌های حیاتی می‌آیند: شغل‌های تولیدی‌اند (سلاح و غذای پخته)
+  // و اگر تهِ فهرست باشند، قبیله‌های کوچکِ ۹ تا ۱۲ نفره هیچ‌وقت به آن‌ها نمی‌رسند.
+  const PRIORITY=['scholar','builder','farmer','healer','blacksmith','cook','gatherer','woodcutter','miner','warrior','guard','hunter','herder','trader','sexworker'];
+  // دوربه‌دور: در هر دور حداکثر یک نفر به هر شغلِ زیر سهمیه می‌رسد (بهترین امتیاز ژن اول)؛
+  // پس هیچ شغلی پیش از آنکه همه‌ی شغل‌ها یک نفر گرفته باشند، نفر دوم نمی‌گیرد.
+  let progress=true;
+  while(progress){
+    progress=false;
+    for(const job of PRIORITY){
+      if(counts[job]>=(t.jobs[job]||0)) continue;
+      const pool=members.filter(a=>!a.job);
+      if(!pool.length) break;
+      pool.sort((x,y)=>jobScore(y,job)-jobScore(x,job));
+      pool[0].job=job; counts[job]++; progress=true;
     }
   }
   for(const a of members) if(!a.job) a.job='gatherer';
@@ -1960,8 +1962,10 @@ function defenseOf(a){
 function raidFight(a,b){
   const pa=fightPower(a), pb=fightPower(b);
   const win=pa>=pb?a:b, lose=win===a?b:a;
-  const dmg=Math.max(8,26-defenseOf(lose)*4);
-  lose.health-=dmg; lose.energy=Math.max(0,lose.energy-10);
+  // آسیب با قدرت مهاجم بالا می‌رود تا سلاح‌های بهتر واقعاً کشنده‌تر باشند؛
+  // بازنده تا چند ثانیه در نبرد است و در این مدت نه خودبه‌خود بهبود می‌یابد و نه درمانگر می‌تواند او را درمان کند
+  const dmg=Math.max(10,Math.round(18+pa*10-defenseOf(lose)*4));
+  lose.health-=dmg; lose.energy=Math.max(0,lose.energy-10); lose.combatT=8;
   burst(lose.x,lose.y,'#f43f5e',10,90); floater(lose.x,lose.y-18,'نبرد','#fda4af');
   if(lose.health<=0) killAgent(lose,'جنگ');
 }
@@ -2168,7 +2172,7 @@ function warriorStep(a,t,dt,speed,know){
       // دیوار و برج دفاعی: غارت کمتر می‌شود و برج به مهاجم آسیب می‌زند
       const walls=S.buildings.filter(b=>b.tribeId===enemy.id&&b.type==='wall'&&b.progress>=100).length;
       const towers=S.buildings.filter(b=>b.tribeId===enemy.id&&b.type==='tower'&&b.progress>=100).length;
-      if(towers>0){ a.health-=10*towers; floater(a.x,a.y-18,'برج دفاعی حمله کرد!','#fda4af'); if(a.health<=0){ killAgent(a,'جنگ'); return true; } }
+      if(towers>0){ a.health-=10*towers; a.combatT=8; floater(a.x,a.y-18,'برج دفاعی حمله کرد!','#fda4af'); if(a.health<=0){ killAgent(a,'جنگ'); return true; } }
       const steal=Math.max(0,Math.min(8,enemy.stock.food)-walls);
       enemy.stock.food-=steal; t.stock.food+=steal;
       S.fights++;
@@ -2200,7 +2204,8 @@ function scholarStep(a,t,dt,speed,know){
 }
 function healerStep(a,t,dt,speed,know){
   let sick=null,bd=300*300;
-  for(const o of S.agents){ if(o.dead||o===a) continue; if(o.health<60||o.plague>0){ const d=(o.x-a.x)**2+(o.y-a.y)**2; if(d<bd){bd=d;sick=o;} } }
+  for(const o of S.agents){ if(o.dead||o===a) continue; if(o.combatT>0) continue; // در میانه‌ی نبرد نمی‌شود درمانش کرد
+    if(o.health<60||o.plague>0){ const d=(o.x-a.x)**2+(o.y-a.y)**2; if(d<bd){bd=d;sick=o;} } }
   if(!sick){
     a.goal='آماده‌باش درمان';
     if(t) moveToward(a,t.centre.x,t.centre.y,dt,speed*0.5);
@@ -2600,6 +2605,7 @@ function autoInfra(t){
   if(walls<8&&hasTech(t,'wall')){ const ang=walls*(Math.PI*2/8); queueBuilding(t,'wall',t.home.x+Math.cos(ang)*190,t.home.y+Math.sin(ang)*190,true); return; }
   if(!has('tower')&&hasTech(t,'wall')){ queueBuilding(t,'tower',t.home.x+rand(-120,120),t.home.y+rand(-120,120),true); return; }
   if(!has('barracks')&&hasTech(t,'woodsword')){ queueBuilding(t,'barracks',t.home.x+rand(-100,100),t.home.y+rand(-100,100),true); return; }
+  if(!has('workshop')&&hasTech(t,'tools')){ queueBuilding(t,'workshop',t.home.x+rand(-100,100),t.home.y+rand(-100,100),true); return; } // کارگاه: آهنگر بدون آن فقط جمع‌آوری می‌کند
   if(!has('command')&&hasTech(t,'writing')){ queueBuilding(t,'command',t.home.x+rand(-100,100),t.home.y+rand(-100,100),true); return; }
   if(!has('armory')&&hasTech(t,'copper')){ queueBuilding(t,'armory',t.home.x+rand(-100,100),t.home.y+rand(-100,100),true); return; }
 }
@@ -2689,7 +2695,7 @@ function wildTick(dt){
           an.health-=30; burst(an.x,an.y,'#f43f5e',8,70);
           if(an.health<=0){ an.dead=true; prey.energy=clamp(prey.energy+20,0,100); logEvent(prey.name+' از حمله‌ی '+(an.kind==='bear'?'خرس':'گرگ')+' جان سالم به در برد و آن را کشت.','good'); }
         } else {
-          prey.health-=an.kind==='bear'?30:18; prey.energy=Math.max(0,prey.energy-10);
+          prey.health-=an.kind==='bear'?30:18; prey.energy=Math.max(0,prey.energy-10); prey.combatT=8;
           floater(prey.x,prey.y-14,'حمله‌ی حیوان وحشی!','#fda4af');
           if(prey.health<=0) killAgent(prey,'حیوان وحشی');
         }
@@ -2945,6 +2951,7 @@ function tick(dt){
   for(const a of S.agents){
     if(a.dead) continue;
     a.age+=dt/dayLen; a.mateCd=Math.max(0,a.mateCd-dt); a.fightCd=Math.max(0,a.fightCd-dt); a.foundCd=Math.max(0,(a.foundCd||0)-dt);
+    if(a.combatT>0) a.combatT-=dt; // در نبرد: تا چند ثانیه بعد از ضربه، بهبود خودبه‌خودی متوقف است
     // نیاز جنسی هر دو جنس با گذشت زمان بالا می‌رود؛ برطرف‌نشدنش سلامت را کم می‌کند
     a.sexNeed=clamp((a.sexNeed||0)+dt*0.9,0,100);
     if(a.sexNeed>75) a.health=clamp(a.health-0.15*dt,0,100);
@@ -2956,7 +2963,7 @@ function tick(dt){
     if(tribeHouse[a.tribeId]>0) extra*=0.5;
     a.energy=clamp(a.energy-drain-extra,0,100);
     if(a.energy<=0){ a.health-=14*dt; if(a.health<=0){killAgent(a,'گرسنگی');continue;} }
-    else if(a.energy>40) a.health=clamp(a.health+(4+(tribeHouse[a.tribeId]>0?2:0))*dt,0,100);
+    else if(a.energy>40&&!(a.combatT>0)) a.health=clamp(a.health+(4+(tribeHouse[a.tribeId]>0?2:0))*dt,0,100);
     if(a.age>=a.lifespan){ killAgent(a,'پیری'); continue; }
     // طاعون
     if(a.plague>0){ a.plagueT+=dt; a.health-=9*dt*(1-a.genes.immunity*0.7)*(tribeById(a.tribeId)&&hasTech(tribeById(a.tribeId),'medicine')?0.5:1);
@@ -3028,7 +3035,7 @@ function tick(dt){
             S.fights++; a.fightCd=3; rival.fightCd=3;
             const pa=a.genes.size*0.6+a.genes.aggression*0.4+rand(.2), pr=rival.genes.size*0.6+rival.genes.aggression*0.4+rand(.2);
             const win=pa>=pr?a:rival, lose=win===a?rival:a;
-            lose.health-=26; lose.energy=Math.max(0,lose.energy-10);
+            lose.health-=26; lose.energy=Math.max(0,lose.energy-10); lose.combatT=8;
             lose.x+= (lose.x-win.x)*0.6; lose.y+=(lose.y-win.y)*0.6;
             burst(f.x,f.y,'#f43f5e',10,90); floater(f.x,f.y-18,'نبرد!','#fda4af');
             if(lose.health<=0) killAgent(lose,'جنگ');
@@ -3353,7 +3360,7 @@ function renderTraitPage(){
       <button class="btn inject" type="button" data-act="i25">تزریق ۲۵٪</button>
       <button class="btn inject" type="button" data-act="i50">تزریق ۵۰٪</button>
       <button class="btn inject" type="button" data-act="i100">تزریق همه</button>
-      <button class="btn remove" type="button" data-act="rm">'+icon('clear')+' حذف</button>
+      <button class="btn remove" type="button" data-act="rm">${icon('clear')} حذف</button>
     </div></div>`).join('')||'<p class="note">ویژگی‌ای پیدا نشد.</p>';
   $('#traitPageInfo').textContent=list.length?('نمایش '+fa(start+1)+' تا '+fa(Math.min(start+TRAITS_PER_PAGE,list.length))+' از '+fa(list.length)+' ویژگی'):'۰ ویژگی';
   $('#traitPrev').disabled=traitPage===0;
