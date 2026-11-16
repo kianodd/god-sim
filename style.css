@@ -297,3 +297,37 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .sel-job{display:block;font-size:12.5px;font-weight:700;margin-top:10px}
 .sel-job select{width:100%;margin-top:5px;background:#0b1230;color:#fff;border:1px solid var(--line);border-radius:10px;padding:9px;font-size:13.5px;min-height:42px}
 @media (max-width:900px){ #minimap{width:120px;height:90px;bottom:30px} }
+
+/* ---------- v3: آیکون‌های SVG + موبایل ---------- */
+.ic{width:1.15em;height:1.15em;vertical-align:-0.2em;flex:none}
+.btn .ic,.tab .ic{width:16px;height:16px;vertical-align:-3px}
+.brand-mark svg{width:30px;height:30px;display:block}
+.chip-ico .ic{width:16px;height:16px}
+.trait-ico .ic{width:24px;height:24px}
+.extinct-ico .ic{width:52px;height:52px}
+.bar-row span .ic,.sel-job .ic,.sel-civ .ic,.sel-family .ic{width:14px;height:14px}
+.clock-phase{color:#fbbf24;font-weight:800}
+.sel-actions .sel-job{flex:1 1 100%;margin-top:2px}
+#minimap{touch-action:manipulation}
+.cam-controls button{display:flex;align-items:center;justify-content:center}
+.cam-controls button .ic{width:22px;height:22px}
+@media (max-width:900px){
+  /* دکمه‌های دوربین بزرگ‌تر و انگشت‌پسند */
+  .cam-controls button{width:52px;height:52px;border-radius:14px}
+  #minimap{width:130px;height:98px}
+  /* کارت موجود انتخاب‌شده: اسکرول داخلی، نه پوشاندن کل صفحه */
+  .selected{max-height:62dvh;overflow-y:auto;top:48px}
+}
+@media (max-width:640px){
+  /* کمتر شلوغی روی گوشی: برچسب چیپ‌ها و راهنمای پایین پنهان می‌شوند */
+  .chip-label{display:none}
+  .hint{display:none}
+  .chips{gap:6px}
+  .chip{padding:6px 8px}
+  .bar-row{grid-template-columns:56px 1fr 40px}
+  .sel-actions .btn{min-height:44px}
+  .tabs{gap:4px}
+  .tab{padding:11px 8px;font-size:12.5px}
+  .top-actions .btn{min-height:44px}
+  .clock{font-size:12px;padding:6px 10px}
+}

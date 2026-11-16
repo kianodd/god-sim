@@ -8,12 +8,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
 <header class="topbar">
   <div class="brand">
-    <div class="brand-mark">🌍</div>
+    <div class="brand-mark"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14 0 18M12 3c-3 3.5-3 14 0 18"/></svg></div>
     <div class="brand-text">
       <h1>خدای جهان کوچک</h1>
       <p>شبیه‌ساز زندگی، ژنتیک و تکامل</p>
@@ -21,16 +21,17 @@
   </div>
   <div class="clock" id="clockBox" title="تقویم جهان">
     <span class="clock-day" id="clockDay">روز ۱</span>
-    <span class="clock-season" id="clockSeason">🌸 بهار</span>
+    <span class="clock-season" id="clockSeason">بهار</span>
     <span class="clock-temp" id="clockTemp">۲۰°</span>
     <span class="clock-time" id="clockTime">۰۸:۰۰</span>
+    <span class="clock-phase" id="clockPhase">روز</span>
   </div>
   <div class="top-actions">
-    <button id="btnPlay" class="btn btn-primary" type="button" aria-label="توقف یا ادامه">⏸ توقف</button>
-    <button id="btnSpeed" class="btn btn-glass" type="button">⚡ سرعت ×۱</button>
-    <button id="btnStep" class="btn btn-glass" type="button" title="یک قدم جلو">⏭ قدم</button>
-    <button id="btnReset" class="btn btn-danger" type="button">🔄 دنیای تازه</button>
-    <button id="btnPanel" class="btn btn-glass panel-toggle" type="button" aria-label="باز و بسته کردن پنل">🎛 پنل</button>
+    <button id="btnPlay" class="btn btn-primary" type="button" aria-label="توقف یا ادامه"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg> توقف</button>
+    <button id="btnSpeed" class="btn btn-glass" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg> سرعت ×۱</button>
+    <button id="btnStep" class="btn btn-glass" type="button" title="یک قدم جلو"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4l9 8-9 8z" fill="currentColor" stroke="none"/><path d="M18 5v14"/></svg> قدم</button>
+    <button id="btnReset" class="btn btn-danger" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> دنیای تازه</button>
+    <button id="btnPanel" class="btn btn-glass panel-toggle" type="button" aria-label="باز و بسته کردن پنل"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="17" r="2"/></svg> پنل</button>
   </div>
 </header>
 
@@ -38,17 +39,17 @@
   <section class="stage" id="stage">
     <canvas id="world" touch-action="none"></canvas>
     <div class="chips" id="chips">
-      <div class="chip"><span class="chip-ico">👥</span><span class="chip-label">جمعیت</span><b id="statPop">۰</b></div>
-      <div class="chip"><span class="chip-ico">🍎</span><span class="chip-label">غذا</span><b id="statFood">۰</b></div>
-      <div class="chip"><span class="chip-ico">👶</span><span class="chip-label">تولد</span><b id="statBirths">۰</b></div>
-      <div class="chip"><span class="chip-ico">💀</span><span class="chip-label">مرگ</span><b id="statDeaths">۰</b></div>
-      <div class="chip"><span class="chip-ico">🧬</span><span class="chip-label">نسل میانگین</span><b id="statGen">۰</b></div>
-      <div class="chip"><span class="chip-ico">⚔️</span><span class="chip-label">جنگ</span><b id="statFights">۰</b></div>
-      <div class="chip"><span class="chip-ico">🪵</span><span class="chip-label">چوب</span><b id="statWood">۰</b></div>
-      <div class="chip"><span class="chip-ico">🪙</span><span class="chip-label">سکه</span><b id="statCoins">۰</b></div>
+      <div class="chip"><span class="chip-ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 15c2.8.3 4.8 1.9 5.5 4.5"/></svg></span><span class="chip-label">جمعیت</span><b id="statPop">۰</b></div>
+      <div class="chip"><span class="chip-ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="7"/><path d="M12 6c0-2 1-3 3-3"/></svg></span><span class="chip-label">غذا</span><b id="statFood">۰</b></div>
+      <div class="chip"><span class="chip-ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12a3 3 0 0 1 6 0"/><path d="M8 16c1-1 2.5-1.5 4-1.5s3 .5 4 1.5"/></svg></span><span class="chip-label">تولد</span><b id="statBirths">۰</b></div>
+      <div class="chip"><span class="chip-ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="11" r="8"/><path d="M9 20v-3M15 20v-3M9 20h6"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/></svg></span><span class="chip-label">مرگ</span><b id="statDeaths">۰</b></div>
+      <div class="chip"><span class="chip-ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"/><path d="M8 6.5h8M8 17.5h8"/></svg></span><span class="chip-label">نسل میانگین</span><b id="statGen">۰</b></div>
+      <div class="chip"><span class="chip-ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l12 12M16 4L4 16"/><path d="M14 3l7 1-1 7M10 3l-7 1 1 7"/></svg></span><span class="chip-label">جنگ</span><b id="statFights">۰</b></div>
+      <div class="chip"><span class="chip-ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l6 9H6z"/><path d="M12 12l4 6H8z"/><path d="M12 18v3"/></svg></span><span class="chip-label">چوب</span><b id="statWood">۰</b></div>
+      <div class="chip"><span class="chip-ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M15 9.5c0-1.5-1.3-2.5-3-2.5s-3 1-3 2.5 1 2 3 2.5 3 1 3 2.5-1.3 2.5-3 2.5-3-1-3-2.5"/></svg></span><span class="chip-label">سکه</span><b id="statCoins">۰</b></div>
     </div>
     <div class="hint" id="hint">بکش تا نقشه جابه‌جا شود • پینچ یا چرخ موس = زوم • روی موجود بزن تا انتخابش کنی • دو بار بزن = باران غذا</div>
-    <div class="armed" id="armedBar" hidden>⚡ قدرت <b id="armedName"></b> آماده است — روی زمین بزن <button id="btnDisarm" type="button">لغو ✕</button></div>
+    <div class="armed" id="armedBar" hidden><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg> قدرت <b id="armedName"></b> آماده است — روی زمین بزن <button id="btnDisarm" type="button">لغو ✕</button></div>
 
     <article class="selected" id="selectedCard" hidden>
       <button class="selected-close" id="btnCloseSelected" type="button" aria-label="بستن">✕</button>
@@ -57,42 +58,52 @@
         <div><h2 id="selName">—</h2><p id="selMeta">—</p></div>
         <span class="sel-sex" id="selSex">—</span>
       </div>
-      <div class="bar-row"><span>🍖 گرسنگی</span><div class="bar"><i id="selHunger" style="width:50%"></i></div><b id="selHungerTxt">۵۰٪</b></div>
-      <div class="bar-row"><span>❤️ سلامتی</span><div class="bar"><i id="selHealth" class="hp" style="width:80%"></i></div><b id="selHealthTxt">۸۰٪</b></div>
-      <div class="bar-row"><span>⏳ عمر</span><div class="bar"><i id="selAge" class="age" style="width:20%"></i></div><b id="selAgeTxt">—</b></div>
-      <div class="bar-row"><span>🧬 هم‌خونی</span><div class="bar"><i id="selInbreed" class="age" style="width:0%"></i></div><b id="selInbreedTxt">۰٪</b></div>
+      <div class="bar-row"><span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="7"/><path d="M12 6c0-2 1-3 3-3"/></svg> گرسنگی</span><div class="bar"><i id="selHunger" style="width:50%"></i></div><b id="selHungerTxt">۵۰٪</b></div>
+      <div class="bar-row"><span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.5-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.5-9 9-9 9z"/></svg> سلامتی</span><div class="bar"><i id="selHealth" class="hp" style="width:80%"></i></div><b id="selHealthTxt">۸۰٪</b></div>
+      <div class="bar-row"><span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12M6 21h12M7 3c0 6 5 6 5 9s-5 3-5 9M17 3c0 6-5 6-5 9s5 3 5 9"/></svg> عمر</span><div class="bar"><i id="selAge" class="age" style="width:20%"></i></div><b id="selAgeTxt">—</b></div>
+      <div class="bar-row"><span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"/><path d="M8 6.5h8M8 17.5h8"/></svg> هم‌خونی</span><div class="bar"><i id="selInbreed" class="age" style="width:0%"></i></div><b id="selInbreedTxt">۰٪</b></div>
+      <div class="bar-row"><span>نیاز جنسی</span><div class="bar"><i id="selSexNeed" class="age" style="width:0%"></i></div><b id="selSexNeedTxt">۰٪</b></div>
       <div class="sel-genes" id="selGenes"></div>
       <h4 class="sel-sub">ژنوتیپ (مندل: AA / Aa / aa)</h4>
       <div class="sel-genotype" id="selGenotype"></div>
       <p class="sel-traits" id="selTraits"></p>
       <p class="sel-family" id="selFamily">—</p>
       <p class="sel-civ" id="selCiv">—</p>
-      <div class="bar-row"><span>🎯 هدف</span><b id="selGoal" style="font-size:12px">—</b></div>
-      <div class="bar-row"><span>🧠 دانش</span><div class="bar"><i id="selKnow" class="age" style="width:0%"></i></div><b id="selKnowTxt">٪۰</b></div>
-      <label class="sel-job">💼 شغل <select id="selJob"></select></label>
+      <p class="sel-family" id="selFamilyInfo">—</p>
+      <p class="sel-civ" id="selEquip">—</p>
+      <p class="sel-civ" id="selLoyalty">—</p>
+      <div class="bar-row"><span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg> هدف</span><b id="selGoal" style="font-size:12px">—</b></div>
+      <div class="bar-row"><span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.8.6 1.5 1.3 1.5 2.1h4c0-.8.7-1.5 1.5-2.1A6 6 0 0 0 12 3z"/></svg> دانش</span><div class="bar"><i id="selKnow" class="age" style="width:0%"></i></div><b id="selKnowTxt">٪۰</b></div>
+      <label class="sel-job"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 15c2.8.3 4.8 1.9 5.5 4.5"/></svg> شغل <select id="selJob"></select></label>
       <div class="punnett-mini" id="punnettMini" hidden></div>
       <div class="sel-actions">
-        <button id="btnFollow" class="btn btn-glass" type="button">👁 دنبال‌کردن</button>
-        <button id="btnFeedOne" class="btn btn-glass" type="button">🍎 غذا بده</button>
-        <button id="btnTraitOne" class="btn btn-glass" type="button">🧬 ویژگی بده</button>
-        <button id="btnPickMate" class="btn btn-glass" type="button">💞 والد دوم</button>
-        <button id="btnKillOne" class="btn btn-danger" type="button">⚡ حذفش کن</button>
+        <button id="btnFollow" class="btn btn-glass" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="3"/></svg> دنبال‌کردن</button>
+        <button id="btnFeedOne" class="btn btn-glass" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="7"/><path d="M12 6c0-2 1-3 3-3"/></svg> غذا بده</button>
+        <button id="btnTraitOne" class="btn btn-glass" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"/><path d="M8 6.5h8M8 17.5h8"/></svg> ویژگی بده</button>
+        <button id="btnPickMate" class="btn btn-glass" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.5-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.5-9 9-9 9z"/></svg> والد دوم</button>
+        <button id="btnKillOne" class="btn btn-danger" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg> حذفش کن</button>
+      </div>
+      <div class="sel-actions">
+        <button id="btnFoundTribe" class="btn btn-primary" type="button">تشکیل قبیله</button>
+        <button id="btnLeaveTribe" class="btn btn-glass" type="button">ترک قبیله</button>
+        <label class="sel-job">پیوستن به <select id="joinTribeSel"></select></label>
+        <button id="btnJoinTribe" class="btn btn-glass" type="button">پیوستن به قبیله</button>
       </div>
     </article>
 
     <div class="extinct" id="extinctBox" hidden>
       <div class="extinct-inner">
-        <div class="extinct-ico">💀</div>
+        <div class="extinct-ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="11" r="8"/><path d="M9 20v-3M15 20v-3M9 20h6"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/></svg></div>
         <h2>انقراض!</h2>
         <p>همه‌ی موجودات این جهان از بین رفتند.<br>خدا می‌تواند دوباره بیافریند.</p>
-        <button id="btnRebirth" class="btn btn-primary btn-big" type="button">🌱 آفرینش دوباره</button>
+        <button id="btnRebirth" class="btn btn-primary btn-big" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12a3 3 0 0 1 6 0"/><path d="M8 16c1-1 2.5-1.5 4-1.5s3 .5 4 1.5"/></svg> آفرینش دوباره</button>
       </div>
     </div>
     <div class="toast" id="toast" hidden></div>
     <div class="cam-controls">
       <button id="btnZoomIn" type="button" aria-label="بزرگ‌نمایی">＋</button>
       <button id="btnZoomOut" type="button" aria-label="کوچک‌نمایی">－</button>
-      <button id="btnCenter" type="button" aria-label="مرکز نقشه">🎯</button>
+      <button id="btnCenter" type="button" aria-label="مرکز نقشه"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
     </div>
     <canvas id="minimap" width="170" height="128" aria-label="نقشه کوچک"></canvas>
   </section>
@@ -100,55 +111,55 @@
   <aside class="panel" id="panel">
     <div class="panel-handle" id="panelHandle" aria-hidden="true"></div>
     <nav class="tabs" role="tablist" aria-label="بخش‌های پنل">
-      <button class="tab active" data-tab="god" type="button">⛈ خدا</button>
-      <button class="tab" data-tab="traits" type="button">🧬 ویژگی‌ها</button>
-      <button class="tab" data-tab="genetics" type="button">🧪 ژنتیک</button>
-      <button class="tab" data-tab="civ" type="button">🏛 تمدن</button>
-      <button class="tab" data-tab="stats" type="button">📊 آمار</button>
-      <button class="tab" data-tab="log" type="button">📜 رویدادها</button>
-      <button class="tab" data-tab="guide" type="button">📖 راهنما</button>
+      <button class="tab active" data-tab="god" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4 4 0 1 1 .6-7.96A5 5 0 0 1 17 8.5 4.5 4.5 0 0 1 17 18z"/><path d="M12 12l-2 4h4z"/></svg> خدا</button>
+      <button class="tab" data-tab="traits" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"/></svg> ویژگی‌ها</button>
+      <button class="tab" data-tab="genetics" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-6 9a3 3 0 0 0 2.5 4h11a3 3 0 0 0 2.5-4l-6-9V3"/><path d="M7.5 15h9"/></svg> ژنتیک</button>
+      <button class="tab" data-tab="civ" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-6 9 6z"/><path d="M5 10v9M10 10v9M14 10v9M19 10v9M3 20h18"/></svg> تمدن</button>
+      <button class="tab" data-tab="stats" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg> آمار</button>
+      <button class="tab" data-tab="log" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9a3 3 0 0 1 3 3v15l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg> رویدادها</button>
+      <button class="tab" data-tab="guide" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a3 3 0 0 1 3-2h13v16H7a3 3 0 0 0-3 3z"/><path d="M4 19a3 3 0 0 1 3-3h13"/></svg> راهنما</button>
     </nav>
 
     <!-- GOD -->
     <section class="tab-page active" id="tab-god">
-      <h3>⚙️ تنظیمات جهان</h3>
+      <h3>تنظیمات جهان</h3>
       <div class="sliders" id="sliders"></div>
 
-      <h3>🌦 سناریوهای آماده <span class="sub">یک آزمایش با یک لمس</span></h3>
+      <h3>سناریوهای آماده <span class="sub">یک آزمایش با یک لمس</span></h3>
       <div class="preset-grid" id="presetGrid"></div>
 
-      <h3>⛈ قدرت‌های خدا <span class="sub">یکی را انتخاب کن، بعد روی زمین بزن</span></h3>
+      <h3>قدرت‌های خدا <span class="sub">یکی را انتخاب کن، بعد روی زمین بزن</span></h3>
       <div class="power-grid" id="powerGrid"></div>
-      <p class="note">💡 نکته: صاعقه و شهاب روی نقطه‌ای که می‌زنی فرود می‌آیند. باران غذا همان‌جا غذا می‌ریزد. طاعون از یک موجود شروع می‌شود و به نزدیکان سرایت می‌کند.</p>
+      <p class="note">نکته: صاعقه و شهاب روی نقطه‌ای که می‌زنی فرود می‌آیند. باران غذا همان‌جا غذا می‌ریزد. طاعون از یک موجود شروع می‌شود و به نزدیکان سرایت می‌کند.</p>
 
-      <h3>👥 جمعیت</h3>
+      <h3>جمعیت</h3>
       <div class="row-btns">
-        <button class="btn btn-glass" id="btnAdd10" type="button">➕ ۱۰ موجود</button>
-        <button class="btn btn-glass" id="btnAddFood" type="button">🍎 باران غذا</button>
-        <button class="btn btn-danger" id="btnKill10" type="button">💀 کشتن ۱۰ تصادفی</button>
-        <button class="btn btn-glass" id="btnMigrant" type="button">🧳 ورود مهاجر</button>
-        <button class="btn btn-danger" id="btnBottleneck" type="button">🍼 گلوگاه (۱۰ نفر)</button>
+        <button class="btn btn-glass" id="btnAdd10" type="button">۱۰ موجود</button>
+        <button class="btn btn-glass" id="btnAddFood" type="button">باران غذا</button>
+        <button class="btn btn-danger" id="btnKill10" type="button">کشتن ۱۰ تصادفی</button>
+        <button class="btn btn-glass" id="btnMigrant" type="button">ورود مهاجر</button>
+        <button class="btn btn-danger" id="btnBottleneck" type="button">گلوگاه (۱۰ نفر)</button>
       </div>
-      <h3>💾 ذخیره و خروجی</h3>
+      <h3>ذخیره و خروجی</h3>
       <div class="row-btns">
-        <button class="btn btn-glass" id="btnSave" type="button">💾 ذخیره جهان</button>
-        <button class="btn btn-glass" id="btnLoad" type="button">📂 بارگذاری ذخیره</button>
-        <button class="btn btn-glass" id="btnExport" type="button">📥 خروجی آمار (JSON)</button>
-        <button class="btn btn-glass" id="btnExportLog" type="button">📜 خروجی رویدادها</button>
+        <button class="btn btn-glass" id="btnSave" type="button">ذخیره جهان</button>
+        <button class="btn btn-glass" id="btnLoad" type="button">بارگذاری ذخیره</button>
+        <button class="btn btn-glass" id="btnExport" type="button">خروجی آمار (JSON)</button>
+        <button class="btn btn-glass" id="btnExportLog" type="button">خروجی رویدادها</button>
       </div>
       <p class="note small">ذخیره در همین مرورگر نگه داشته می‌شود. خروجی JSON را می‌توانی نگه داری یا با دوستانت به اشتراک بگذاری.</p>
     </section>
 
     <!-- TRAITS -->
     <section class="tab-page" id="tab-traits">
-      <h3>🧬 آزمایشگاه ویژگی‌ها</h3>
+      <h3>آزمایشگاه ویژگی‌ها</h3>
       <p class="note">یک ویژگی را به بخشی از جمعیت تزریق کن و ببین در نسل‌های بعد چطور پخش می‌شود. نمودار «آمار» فراوانی هر ویژگی را زنده نشان می‌دهد.</p>
       <div class="trait-tools">
-        <button class="btn btn-glass" id="btnRandomMut" type="button">🎲 جهش تصادفی در همه</button>
-        <button class="btn btn-glass" id="btnShuffleGenes" type="button">🔀 به‌هم‌ریختن ژن‌ها</button>
+        <button class="btn btn-glass" id="btnRandomMut" type="button">جهش تصادفی در همه</button>
+        <button class="btn btn-glass" id="btnShuffleGenes" type="button">به‌هم‌ریختن ژن‌ها</button>
       </div>
       <div class="trait-search">
-        <input id="traitSearch" type="search" placeholder="🔍 جست‌وجوی ویژگی…" aria-label="جست‌وجوی ویژگی">
+        <input id="traitSearch" type="search" placeholder="جست‌وجوی ویژگی…" aria-label="جست‌وجوی ویژگی">
         <select id="traitGeneFilter" aria-label="فیلتر بر اساس ژن">
           <option value="">همه‌ی ژن‌ها</option>
           <option value="speed">سرعت</option><option value="vision">بینایی</option>
@@ -167,7 +178,7 @@
         <button class="btn btn-glass" id="traitNext" type="button">بعدی ›</button>
       </div>
 
-      <h3>✨ ساخت ویژگی دلخواه</h3>
+      <h3>ساخت ویژگی دلخواه</h3>
       <div class="custom-trait">
         <label>نام ویژگی <input id="ctName" type="text" placeholder="مثلاً: پوست آهنی" maxlength="24"></label>
         <label>ژن هدف
@@ -183,7 +194,7 @@
         </label>
         <label>قدرت <input id="ctPower" type="range" min="0.6" max="1" step="0.05" value="0.9"> <b id="ctPowerTxt">۰٫۹</b></label>
         <div class="row-btns">
-          <button class="btn btn-primary" id="btnCreateTrait" type="button">🧬 ساخت و تزریق به ۲۵٪</button>
+          <button class="btn btn-primary" id="btnCreateTrait" type="button">ساخت و تزریق به ۲۵٪</button>
         </div>
         <div class="custom-list" id="customTraitList"></div>
       </div>
@@ -191,15 +202,15 @@
 
     <!-- GENETICS LAB -->
     <section class="tab-page" id="tab-genetics">
-      <h3>🧪 آزمایشگاه ژنتیک <span class="sub">قوانین واقعی، قابل ویرایش</span></h3>
+      <h3>آزمایشگاه ژنتیک <span class="sub">قوانین واقعی، قابل ویرایش</span></h3>
       <p class="note">هر ژن دو آلل دارد: یکی از پدر، یکی از مادر. آلل <b>A</b> بزرگ و <b>a</b> کوچک است. ژنوتیپ می‌تواند <b>AA</b> ،<b>Aa</b> یا <b>aa</b> باشد. اگر آلل A غالب باشد، Aa هم مثل AA دیده می‌شود و فقط aa ویژگی مغلوب را نشان می‌دهد — و برعکس، اگر غالب بودن را جابه‌جا کنی. سرعت، بینایی و جثه چندژنی‌اند: حاصل جمع ۳ جایگاه ژنی + کمی اثر محیط.</p>
       <div class="row-btns">
-        <button class="btn btn-danger" id="btnBottleneck2" type="button">🍼 گلوگاه: فقط ۱۰ نفر بمانند</button>
-        <button class="btn btn-glass" id="btnFounder" type="button">🌱 اثر بنیان‌گذار: ۵ نفر</button>
-        <button class="btn btn-glass" id="btnMigrant2" type="button">🧳 ورود ۸ مهاجر</button>
-        <button class="btn btn-glass" id="btnResetRules" type="button">🔬 بازنشانی قوانین به حالت علمی استاندارد</button>
+        <button class="btn btn-danger" id="btnBottleneck2" type="button">گلوگاه: فقط ۱۰ نفر بمانند</button>
+        <button class="btn btn-glass" id="btnFounder" type="button">اثر بنیان‌گذار: ۵ نفر</button>
+        <button class="btn btn-glass" id="btnMigrant2" type="button">ورود ۸ مهاجر</button>
+        <button class="btn btn-glass" id="btnResetRules" type="button">بازنشانی قوانین به حالت علمی استاندارد</button>
       </div>
-      <h3>💞 انتخاب جنسی</h3>
+      <h3>انتخاب جنسی</h3>
       <div class="custom-trait">
         <label>ماده‌ها چه نری را ترجیح می‌دهند؟
           <select id="matePref">
@@ -211,38 +222,38 @@
         </label>
         <label>قدرت ترجیح <input id="matePrefStrength" type="range" min="0" max="1" step="0.1" value="0.6"> <b id="matePrefStrengthTxt">۰٫۶</b></label>
       </div>
-      <h3>🧬 جدول پانت (Punnett)</h3>
-      <p class="note">یک موجود را انتخاب کن، بعد دکمه «💞 والد دوم» را بزن و موجود دوم را روی زمین انتخاب کن. احتمال ژنوتیپ فرزندشان برای هر ژن اینجا نشان داده می‌شود.</p>
+      <h3>جدول پانت (Punnett)</h3>
+      <p class="note">یک موجود را انتخاب کن، بعد دکمه «والد دوم» را بزن و موجود دوم را روی زمین انتخاب کن. احتمال ژنوتیپ فرزندشان برای هر ژن اینجا نشان داده می‌شود.</p>
       <div class="punnett" id="punnettBox"><p class="note">هنوز دو والد انتخاب نشده‌اند.</p></div>
-      <h3>⚙️ قوانین هر ژن</h3>
+      <h3>قوانین هر ژن</h3>
       <div id="geneRules"></div>
       <p class="note small">اپیستازی: ژن «پوشش تیره» روی ژن «رنگ پوشش» سوار است — اگر پوشش تیره ظاهر شود، بدن تیره می‌شود هرچقدر هم رنگ پوشش روشن باشد. در راهنما مثالش را ببین.</p>
     </section>
 
     <!-- CIV -->
     <section class="tab-page" id="tab-civ">
-      <h3>🏛 تمدن <span class="sub">قبیله، شغل، دانش و ساختمان</span></h3>
+      <h3>تمدن <span class="sub">قبیله، شغل، دانش و ساختمان</span></h3>
       <p class="note">روی یک قبیله بزن تا انتخاب شود؛ ساختمان را انتخاب کن و بعد روی نقشه بزن تا جایش را مشخص کنی. فناوری‌ها خودبه‌خود پژوهش می‌شوند، ولی می‌توانی یکی را در اولویت بگذاری.</p>
       <div id="tribeList"></div>
       <div id="tribeDetail"></div>
-      <h3>🔬 درخت دانش</h3>
+      <h3>درخت دانش</h3>
       <div class="tech-grid" id="techTree"></div>
-      <h3>🏗 ساختن</h3>
+      <h3>ساختن</h3>
       <div class="build-grid" id="buildList"></div>
       <p class="note small">ساختمان‌ها با چوب و سنگ انبار قبیله ساخته می‌شوند؛ سازندگان خودشان می‌روند و می‌سازند. خانه‌ها سرپناه می‌دهند، مزرعه و مرتع غذا می‌دهند، مدرسه و دانشگاه پژوهش را زیاد می‌کنند.</p>
     </section>
 
     <!-- GUIDE -->
     <section class="tab-page" id="tab-guide">
-      <h3>📖 راهنمای ژنتیک — به زبان ساده</h3>
+      <h3>راهنمای ژنتیک — به زبان ساده</h3>
       <div class="guide-list" id="guideList"></div>
     </section>
 
     <!-- STATS -->
     <section class="tab-page" id="tab-stats">
-      <h3>📈 جمعیت در طول زمان</h3>
+      <h3>جمعیت در طول زمان</h3>
       <canvas class="chart" id="chartPop" width="640" height="180"></canvas>
-      <h3>🧬 فرکانس آلل‌ها در طول زمان (p و q)</h3>
+      <h3>فرکانس آلل‌ها در طول زمان (p و q)</h3>
       <div class="custom-trait">
         <label>ژن مورد بررسی
           <select id="alleleGeneSelect"></select>
@@ -251,25 +262,25 @@
       <canvas class="chart" id="chartAllele" width="640" height="180"></canvas>
       <div class="hw-box" id="hwBox"></div>
       <p class="note" id="driftNote">شاخص رانش ژنتیکی: —</p>
-      <h3>🧬 فراوانی ۳ ویژگی برتر در طول زمان</h3>
+      <h3>فراوانی ۳ ویژگی برتر در طول زمان</h3>
       <canvas class="chart" id="chartTraits" width="640" height="180"></canvas>
       <p class="note" id="topTraitsNote">هنوز داده‌ای ثبت نشده — کمی صبر کن.</p>
-      <h3>🏆 برترین نژادها (تبارها)</h3>
+      <h3>برترین نژادها (تبارها)</h3>
       <div class="lineages" id="lineageList"></div>
-      <h3>🧬 فراوانی ویژگی‌ها همین حالا</h3>
+      <h3>فراوانی ویژگی‌ها همین حالا</h3>
       <div class="freq-list" id="freqList"></div>
-      <h3>📋 علت مرگ‌ها</h3>
+      <h3>علت مرگ‌ها</h3>
       <div class="deaths" id="deathList"></div>
-      <h3>📊 میانگین ژن‌های جمعیت</h3>
+      <h3>میانگین ژن‌های جمعیت</h3>
       <div class="avg-genes" id="avgGenes"></div>
     </section>
 
     <!-- LOG -->
     <section class="tab-page" id="tab-log">
-      <h3>📜 دفتر رویدادهای جهان</h3>
+      <h3>دفتر رویدادهای جهان</h3>
       <div class="row-btns">
-        <button class="btn btn-glass" id="btnClearLog" type="button">🧹 پاک‌کردن دفتر</button>
-        <button class="btn btn-glass" id="btnCopyLog" type="button">📋 کپی رویدادها</button>
+        <button class="btn btn-glass" id="btnClearLog" type="button">پاک‌کردن دفتر</button>
+        <button class="btn btn-glass" id="btnCopyLog" type="button">کپی رویدادها</button>
       </div>
       <ol class="log" id="eventLog"></ol>
     </section>
@@ -283,22 +294,22 @@
 
 <div class="confirm-overlay" id="confirmBox" hidden>
   <div class="extinct-inner">
-    <div class="extinct-ico">🌍</div>
+    <div class="extinct-ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14 0 18M12 3c-3 3.5-3 14 0 18"/></svg></div>
     <h2>دنیای تازه؟</h2>
     <p>همه‌ی موجودات، قبیله‌ها، ساختمان‌ها و تاریخچه پاک می‌شود و یک جهان تازه از نو ساخته می‌شود.</p>
     <div class="slider-row nw-pop">
-      <div class="s-head"><span>👥 تعداد موجودات</span><b id="nwPopVal">۱۲۰ موجود</b></div>
+      <div class="s-head"><span>تعداد موجودات</span><b id="nwPopVal">۱۲۰ موجود</b></div>
       <div class="s-desc">دنیای تازه با همین تعداد موجود ساخته می‌شود (۱۰ تا ۵۰۰).</div>
       <input type="range" id="nwPopRange" min="10" max="500" step="10" value="120" aria-label="تعداد موجودات">
       <div class="nw-num"><input type="number" id="nwPopNum" min="10" max="500" step="1" value="120" aria-label="تعداد دقیق موجودات"> <span>موجود</span></div>
     </div>
     <div class="row-btns" style="justify-content:center">
-      <button id="btnConfirmReset" class="btn btn-danger btn-big" type="button">🌍 بله، بساز</button>
+      <button id="btnConfirmReset" class="btn btn-danger btn-big" type="button">بله، بساز</button>
       <button id="btnCancelReset" class="btn btn-glass btn-big" type="button">لغو</button>
     </div>
   </div>
 </div>
 
-<script src="app.js?v=20"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>
