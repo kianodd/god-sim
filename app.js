@@ -2860,9 +2860,13 @@ $('#btnSpeed').addEventListener('click',()=>{
   $('#btnSpeed').textContent='⚡ سرعت ×'+fa(S.speed);
 });
 $('#btnStep').addEventListener('click',()=>{ if(S.running) setRunning(false); tick(0.5); draw(); updateStats(); });
-$('#btnReset').addEventListener('click',()=>{
-  if(confirm('دنیای تازه بسازم؟ همه‌ی موجودات و تاریخچه پاک می‌شود.')){ resetWorld(); logEvent('🌍 دنیای تازه آفریده شد.','god'); toast('🌍 دنیای تازه آفریده شد'); }
+$('#btnReset').addEventListener('click',()=>{ $('#confirmBox').hidden=false; });
+$('#btnConfirmReset').addEventListener('click',()=>{
+  $('#confirmBox').hidden=true;
+  resetWorld(); logEvent('🌍 دنیای تازه آفریده شد.','god'); toast('🌍 دنیای تازه آفریده شد');
 });
+$('#btnCancelReset').addEventListener('click',()=>{ $('#confirmBox').hidden=true; });
+$('#confirmBox').addEventListener('click',e=>{ if(e.target.id==='confirmBox') $('#confirmBox').hidden=true; });
 $('#btnRebirth').addEventListener('click',()=>{ resetWorld(); toast('🌱 آفرینش دوباره!'); });
 $('#btnPanel').addEventListener('click',()=>$('#panel').classList.toggle('open'));
 $('#panelHandle').addEventListener('click',()=>$('#panel').classList.toggle('open'));
