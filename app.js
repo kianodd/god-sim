@@ -1748,7 +1748,7 @@ function resetWorld(n){
 /* قبیله‌ها از اول وجود ندارند؛ افراد قوی با جمع کردن یار، قبیله می‌سازند */
 const TRIBE_CULTURES=['موسیقی و آواز','داستان و اسطوره','رقص و نقاشی','شعر و حکمت','صنایع دستی','شکار و شجاعت'];
 function leadershipOf(a){ return clamp(a.genes.aggression*0.3+a.genes.cooperation*0.25+a.genes.size*0.2+a.knowledge*0.25,0,1); }
-function tribeJobsDefault(){ return {gatherer:6,woodcutter:3,miner:3,farmer:4,builder:3,warrior:3,guard:2,hunter:2,scholar:3,healer:2,trader:2,herder:2,blacksmith:2,cook:1,sexworker:1}; }
+function tribeJobsDefault(){ return {gatherer:6,woodcutter:3,miner:3,farmer:4,builder:3,warrior:3,guard:2,hunter:2,scholar:3,healer:2,trader:2,herder:2,blacksmith:2,cook:1,sexworker:2}; }
 function newTribe(founder){
   const used=new Set(S.tribes.map(t=>t.name));
   const nm=TRIBE_NAMES.find(n=>!used.has('قبیله '+n))||('قبیله '+fa(S.nextTribeId));
@@ -1916,7 +1916,10 @@ function assignJobs(t){
       if(counts[job]>=(t.jobs[job]||0)) continue;
       const pool=members.filter(a=>!a.job);
       if(!pool.length) break;
-      pool.sort((x,y)=>jobScore(y,job)-jobScore(x,job));
+      // روسپی: اکثراً ماده — امتیاز جنسی فقط همین‌جا اعمال می‌شود، نه در jobScore
+      // (وگرنه در انتخاب شغل بی‌قبیله‌ها هم روسپی بر همه‌ی شغل‌ها غلبه می‌کرد)
+      const swScore=a=>jobScore(a,job)+(job==='sexworker'?(a.sex==='♀'?0.6:-0.2):0);
+      pool.sort((x,y)=>swScore(y)-swScore(x));
       pool[0].job=job; counts[job]++; progress=true;
     }
   }
@@ -2713,8 +2716,11 @@ function assignTribelessJobs(){
   const pool=['gatherer','woodcutter','miner','hunter','builder','healer','scholar','cook','blacksmith','sexworker'];
   for(const a of S.agents){
     if(a.dead||a.tribeId!=null||a.age<0.4||a.job) continue;
-    let best=null,bs=-1;
-    for(const j of pool){ const s=jobScore(a,j)+rand(0.15); if(s>bs){bs=s;best=j;} }
+    let best=null,bs=-1,second=null,s2=-1;
+    for(const j of pool){ const s=jobScore(a,j)+rand(0.15); if(s>bs){s2=bs;second=best;bs=s;best=j;} else if(s>s2){s2=s;second=j;} }
+    // روسپی: اکثراً ماده — نر فقط با احتمال ۵۰٪ می‌پذیرد، وگرنه دومین شغل برتر را می‌گیرد
+    // (با رد ۸۰٪، تعداد کل روسپی‌ها آن‌قدر کم می‌شد که نیاز جنسی خیلی‌ها بی‌پاسخ می‌ماند)
+    if(best==='sexworker'&&a.sex==='♂'&&second&&Math.random()<0.5) best=second;
     a.job=best;
   }
 }
