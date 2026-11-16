@@ -2860,10 +2860,24 @@ $('#btnSpeed').addEventListener('click',()=>{
   $('#btnSpeed').textContent='⚡ سرعت ×'+fa(S.speed);
 });
 $('#btnStep').addEventListener('click',()=>{ if(S.running) setRunning(false); tick(0.5); draw(); updateStats(); });
-$('#btnReset').addEventListener('click',()=>{ $('#confirmBox').hidden=false; });
+function nwPopVal(){ const v=parseInt($('#nwPopNum').value,10); return clamp(isNaN(v)?120:v,10,500); }
+function nwPopSync(v){
+  v=clamp(Math.round(v)||120,10,500);
+  $('#nwPopNum').value=v;
+  $('#nwPopVal').textContent=fa(v)+' موجود';
+}
+$('#nwPopRange').addEventListener('input',()=>{ const v=clamp(+$('#nwPopRange').value||120,10,500); $('#nwPopRange').value=v; nwPopSync(v); });
+$('#nwPopNum').addEventListener('input',()=>nwPopSync(+$('#nwPopNum').value));
+$('#btnReset').addEventListener('click',()=>{ nwPopSync(nwPopVal()); $('#confirmBox').hidden=false; });
 $('#btnConfirmReset').addEventListener('click',()=>{
   $('#confirmBox').hidden=true;
-  resetWorld(); logEvent('🌍 دنیای تازه آفریده شد.','god'); toast('🌍 دنیای تازه آفریده شد');
+  const n=nwPopVal();
+  S.settings.popCap=Math.max(n,S.settings.popCap);
+  const sl=$('#sl-popCap'); if(sl&&sl.value!==undefined) sl.value=S.settings.popCap;
+  const slv=$('#slv-popCap'); if(slv) slv.textContent=fa(S.settings.popCap)+' موجود';
+  resetWorld(n);
+  logEvent('🌍 دنیای تازه با '+fa(n)+' موجود آفریده شد.','god');
+  toast('🌍 دنیای تازه با '+fa(n)+' موجود آفریده شد');
 });
 $('#btnCancelReset').addEventListener('click',()=>{ $('#confirmBox').hidden=true; });
 $('#confirmBox').addEventListener('click',e=>{ if(e.target.id==='confirmBox') $('#confirmBox').hidden=true; });

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=18">
+<link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
 <header class="topbar">
@@ -286,6 +286,12 @@
     <div class="extinct-ico">🌍</div>
     <h2>دنیای تازه؟</h2>
     <p>همه‌ی موجودات، قبیله‌ها، ساختمان‌ها و تاریخچه پاک می‌شود و یک جهان تازه از نو ساخته می‌شود.</p>
+    <div class="slider-row nw-pop">
+      <div class="s-head"><span>👥 تعداد موجودات</span><b id="nwPopVal">۱۲۰ موجود</b></div>
+      <div class="s-desc">دنیای تازه با همین تعداد موجود ساخته می‌شود (۱۰ تا ۵۰۰).</div>
+      <input type="range" id="nwPopRange" min="10" max="500" step="10" value="120" aria-label="تعداد موجودات">
+      <div class="nw-num"><input type="number" id="nwPopNum" min="10" max="500" step="1" value="120" aria-label="تعداد دقیق موجودات"> <span>موجود</span></div>
+    </div>
     <div class="row-btns" style="justify-content:center">
       <button id="btnConfirmReset" class="btn btn-danger btn-big" type="button">🌍 بله، بساز</button>
       <button id="btnCancelReset" class="btn btn-glass btn-big" type="button">لغو</button>
@@ -293,6 +299,6 @@
   </div>
 </div>
 
-<script src="app.js?v=18"></script>
+<script src="app.js?v=19"></script>
 </body>
 </html>
