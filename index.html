@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=24">
+<link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
 <header class="topbar">
@@ -88,6 +88,24 @@
         <button id="btnLeaveTribe" class="btn btn-glass" type="button">ترک قبیله</button>
         <label class="sel-job">پیوستن به <select id="joinTribeSel"></select></label>
         <button id="btnJoinTribe" class="btn btn-glass" type="button">پیوستن به قبیله</button>
+      </div>
+    </article>
+
+    <article class="selected" id="buildingCard" hidden>
+      <button class="selected-close" id="btnCloseBuilding" type="button" aria-label="بستن">✕</button>
+      <div class="sel-head">
+        <span class="sel-dot" id="bldDot"></span>
+        <div><h2 id="bldName">—</h2><p id="bldMeta">—</p></div>
+      </div>
+      <div class="bar-row"><span>سلامت ساختمان</span><div class="bar"><i id="bldHp" class="hp" style="width:100%"></i></div><b id="bldHpTxt">—</b></div>
+      <div class="bar-row" id="bldProgRow"><span>پیشرفت ساخت</span><div class="bar"><i id="bldProg" style="width:0%"></i></div><b id="bldProgTxt">—</b></div>
+      <p class="sel-civ" id="bldInfo">—</p>
+      <p class="sel-civ" id="bldContent">—</p>
+      <p class="sel-family" id="bldOwner">—</p>
+      <div class="sel-actions">
+        <button id="btnBuildRepair" class="btn btn-glass" type="button">تعمیر (۵ چوب، ۳ سنگ)</button>
+        <button id="btnBuildUpgrade" class="btn btn-glass" type="button">ارتقا</button>
+        <button id="btnBuildDemolish" class="btn btn-danger" type="button">تخریب</button>
       </div>
     </article>
 
@@ -310,6 +328,6 @@
   </div>
 </div>
 
-<script src="app.js?v=24"></script>
+<script src="app.js?v=25"></script>
 </body>
 </html>

@@ -162,6 +162,22 @@ efficiency:'<path d="M13 2L4 14h6l-1 8 9-12h-6z"/>',
 immunity:'<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
 coat:'<path d="M12 3c-4 2-6 5-6 9a6 6 0 0 0 12 0c0-4-2-7-6-9z"/>',
 mask:'<path d="M3 12c2-4 6-6 9-6s7 2 9 6c-2 4-6 6-9 6s-7-2-9-6z"/><circle cx="12" cy="12" r="2.5"/>',
+/* v4: آیکون‌های تازه (اتحاد، مغازه‌های شغلی، محاصره، تجارت) */
+alliance:'<circle cx="8" cy="12" r="4.5"/><circle cx="16" cy="12" r="4.5"/>',
+bakery:'<path d="M4 14a8 5 0 0 1 16 0v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M9 14v-1.5M13 14v-1.5M17 14v-1.5"/>',
+granary:'<path d="M8 21V9a4 4 0 0 1 8 0v12"/><path d="M5 21h14"/><path d="M8 13h8M8 17h8"/>',
+smithy:'<path d="M4 7h16v3H4z"/><path d="M9 10l-1 6h8l-1-6"/><path d="M7 20h10"/>',
+butcher:'<path d="M4 4h9a3 3 0 0 1 3 3v4H8a4 4 0 0 1-4-4z"/><path d="M16 11l5 5M18 9l4 4"/>',
+library:'<path d="M5 4h4v16H5zM11 4h4v16h-4zM17 4h2v16h-2z"/>',
+clinic:'<path d="M9 3h6v4h4v6h-4v8H9v-8H5V7h4z"/>',
+inn:'<path d="M3 18v-8M3 14h18v4"/><path d="M3 14a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3"/><circle cx="6.5" cy="11" r="1.5"/>',
+siege:'<path d="M4 20h16"/><path d="M6 20l9-13 4 2"/><circle cx="19" cy="6" r="2.5"/>',
+rubble:'<path d="M4 20h16M6 20v-6l4 2v4M12 20v-9l4 3v6M18 20v-4"/>',
+repair:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17a2.1 2.1 0 0 0 3 3l5.3-5.3a4 4 0 0 0 5.4-5.4L14.5 12l-2.5-2.5z"/>',
+demolish:'<path d="M13 4l7 7"/><path d="M4 20l7-7"/><path d="M15 3l6 6-2 2-6-6z"/>',
+trade:'<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+scale:'<path d="M12 4v16M8 20h8"/><path d="M5 7h14"/><path d="M7 7l-2.5 5a2.8 2.8 0 0 0 5 0zM17 7l-2.5 5a2.8 2.8 0 0 0 5 0z"/>',
+upgrade:'<path d="M6 15l6-6 6 6M6 20l6-6 6 6"/>',
 };
 function icon(n,cls){ return '<svg class="ic'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[n]||ICONS.star)+'</svg>'; }
 
@@ -1600,6 +1616,7 @@ const S={
   tribes:[], buildings:[], buildQueue:[], trees:[], stones:[], animals:[],
   families:[], battles:[], nextFamilyId:1, nextTribeId:1, nextBattleId:1, wildSpawnT:0,
   selTribe:0, placing:null, highlightTribe:null, nextBuildId:1, civAcc:0, civRenderT:0, breedT:0,
+  selectedBuilding:null, tradeCount:0,
   mutations:{neutral:0,beneficial:0,harmful:0},
   genetics:{matePref:'none',matePrefStrength:0.6},
   settings:{popCap:120,foodRate:5,foodEnergy:25,hungerRate:1,mutation:0.08,temperature:20,dayLength:60,fertility:1},
@@ -1730,7 +1747,7 @@ function spawnFood(x,y){
   S.foods.push({x:x??rand(16,W-16),y:y??rand(16,H-16),energy:S.settings.foodEnergy,pulse:rand(Math.PI*2),r:rand(4,6.5)});
 }
 function resetWorld(n){
-  S.agents=[];S.foods=[];S.parts=[];S.floaters=[];S.corpses=[];S.selected=null;S.follow=false;
+  S.agents=[];S.foods=[];S.parts=[];S.floaters=[];S.corpses=[];S.selected=null;S.follow=false;S.selectedBuilding=null;S.tradeCount=0;
   S.tribes=[];S.families=[];S.battles=[];S.nextFamilyId=1;S.nextTribeId=1;S.nextBattleId=1;S.wildSpawnT=0;
   S.buildings=[];S.buildQueue=[];S.trees=[];S.stones=[];S.animals=[];
   S.nextBuildId=1;S.selTribe=0;S.placing=null;S.highlightTribe=null;S.civAcc=0;S.breedT=0;
@@ -1741,7 +1758,7 @@ function resetWorld(n){
   createTribes(); spawnResources();
   for(let i=0;i<100;i++) spawnFood();
   spawnInitial(n||S.settings.popCap);
-  $('#extinctBox').hidden=true; updateSelected();
+  $('#extinctBox').hidden=true; updateSelected(); updateBuildingCard();
 }
 
 /* ---------------- تمدن: قبایل، شغل‌ها، دانش، ساختمان ---------------- */
@@ -1758,7 +1775,10 @@ function newTribe(founder){
     chiefId:founder.id,stance:founder.opinion,
     stock:{wood:10,stone:5,food:20,coins:0,meals:0},research:0,researchTarget:null,techs:{},culture:0,festivals:0,festivalUntil:0,
     relations:{},centre:{x:founder.x,y:founder.y},home:{x:founder.x,y:founder.y},relocT:rand(0,20),plantCd:0,plantedLogged:false,
-    jobs:tribeJobsDefault(),tradeCd:0,warCd:0,armory:{weapon:{},shield:{},armor:{}},createdDay:S.day};
+    jobs:tribeJobsDefault(),tradeCd:0,warCd:0,armory:{weapon:{},shield:{},armor:{}},createdDay:S.day,
+    /* v4: دیپلماسی و جنگ */
+    allies:[], grievance:{}, truce:{}, warFatigue:0, needsBal:{food:0,wood:0,stone:0}, prevStock:null, needsT:0, needsNote:'',
+    diplomacyT:rand(0,10), tradeLogT:0, siegeT:0};
   for(const o of S.tribes){ t.relations[o.id]=0; o.relations[t.id]=0; }
   return t;
 }
@@ -1809,7 +1829,22 @@ const BUILDINGS={
   barracks:{icon:'barracks',name:'سربازخانه',wood:25,stone:15,tech:'woodsword',desc:'جنگجوها اینجا تمرین می‌کنند و قوی‌تر می‌شوند'},
   command:{icon:'command',name:'مرکز فرماندهی',wood:30,stone:20,tech:'writing',desc:'هماهنگی جنگ و وفاداری بیشتر اعضا'},
   armory:{icon:'armory',name:'اسلحه‌خانه',wood:20,stone:15,tech:'copper',desc:'سلاح و زره ذخیره می‌شود؛ آهنگر اینجا بهتر می‌سازد'},
+  /* v4: مغازه‌های شغلی — هر کدام اثر واقعی در شغل مربوطه دارد */
+  bakery:{icon:'bakery',name:'نانوایی',wood:12,stone:6,tech:'pottery',desc:'آشپز اینجا دو برابر سریع‌تر می‌پزد؛ غذای پخته +۴۰ انرژی می‌دهد'},
+  granary:{icon:'granary',name:'انبار غله',wood:10,stone:8,tech:'pottery',desc:'سقف غذای قبیله را ۱۵۰ تا بالا می‌برد'},
+  smithy:{icon:'smithy',name:'آهنگری',wood:15,stone:10,tech:'copper',desc:'آهنگر اینجا دو برابر سریع‌تر می‌سازد'},
+  butcher:{icon:'butcher',name:'قصابی',wood:8,stone:4,tech:'herding',desc:'هر شکار +۱۰ غذای بیشتر می‌دهد'},
+  library:{icon:'library',name:'کتابخانه',wood:15,stone:10,tech:'writing',desc:'دانشمندان سریع‌تر یاد می‌گیرند؛ پژوهش بیشتر'},
+  clinic:{icon:'clinic',name:'درمانگاه',wood:12,stone:8,tech:'medicine',desc:'درمانگر اینجا ۱٫۵ برابر سریع‌تر درمان می‌کند'},
+  inn:{icon:'inn',name:'مهمانخانه',wood:10,stone:5,tech:'money',desc:'روسپی اینجا مشتری بیشتری دارد و دستمزد بیشتری می‌گیرد'},
 };
+/* v4: جان (HP) هر ساختمان — محاصره‌کننده‌ها به ساختمان حمله می‌کنند */
+const BUILDING_HP={house:60,farm:50,pasture:50,school:70,university:100,hospital:80,market:70,workshop:60,wall:140,tower:100,barracks:100,command:120,armory:100,bakery:60,granary:80,smithy:80,butcher:50,library:70,clinic:70,inn:60};
+function buildingHP(type,level){ return Math.round((BUILDING_HP[type]||60)*(1+0.5*((level||1)-1))); }
+function newBuilding(tribeId,type,x,y,ownerFam){
+  const b={id:S.nextBuildId++,type,x:clamp(x,30,WORLD_W-30),y:clamp(y,30,WORLD_H-30),tribeId:tribeId??null,progress:0,growth:0,milkT:0,createdAt:S.elapsed,ownerFamilyId:ownerFam||null,renterFamilyId:null,hp:BUILDING_HP[type]||60,maxHp:BUILDING_HP[type]||60,level:1};
+  return b;
+}
 const TECHS=[
   {id:'fire',icon:'fire',name:'آتش',cost:20,age:0,requires:[],desc:'گرما و نور؛ در سرما کمتر می‌میرند'},
   {id:'tools',icon:'tools',name:'ابزار سنگی',cost:25,age:0,requires:[],desc:'جمع‌آوری چوب و سنگ ۵۰٪ سریع‌تر'},
@@ -1857,7 +1892,16 @@ const ARMORS={
 const ARMOR_ORDER=['leather','bronze','iron'];
 const TRIBE_NAMES=['شیر','عقاب','گرگ','خرس','پلنگ','شاهین','ببر','گوزن','روباه','مار','خورشید','ماه','ستاره','رود','کوه','جنگل','آتش','باد','طوفان','دریا'];
 const TRIBE_COLORS=['#f59e0b','#22d3ee','#34d399','#f43f5e','#a78bfa','#fb923c','#38bdf8','#facc15','#4ade80','#f472b6'];
-const STOCK_CAP={wood:400,stone:300,food:600};
+/* v4: سقف‌های نرم انبار پایین‌تر آمد تا انبارش بی‌پایان نباشد؛ انبار غله سقف غذا را بالا می‌برد */
+const STOCK_CAP={wood:250,stone:200,food:400};
+const COIN_CAP=300;
+function foodCap(t){
+  if(!t) return STOCK_CAP.food;
+  let g=0; for(const b of S.buildings) if(b.tribeId===t.id&&b.type==='granary'&&b.progress>=100) g+=b.level||1;
+  return STOCK_CAP.food+150*g;
+}
+function hasBuilding(t,type){ return S.buildings.some(b=>b.tribeId===t.id&&b.type===type&&b.progress>=100); }
+function buildingLevel(t,type){ let l=0; for(const b of S.buildings) if(b.tribeId===t.id&&b.type===type&&b.progress>=100) l=Math.max(l,b.level||1); return l; }
 
 function tribeById(id){ return S.tribes.find(t=>t.id===id); }
 function tribeMembers(t){ return S.agents.filter(a=>!a.dead&&a.tribeId===t.id); }
@@ -1951,7 +1995,154 @@ function nearestAgentOfTribe(t,x,y,maxD){
   for(const a of S.agents){ if(a.dead||a.tribeId!==t.id) continue; const d=(a.x-x)**2+(a.y-y)**2; if(d<bd){bd=d;best=a;} }
   return best;
 }
-function warTarget(t){ for(const o of S.tribes){ if(o.id!==t.id&&(t.relations[o.id]??0)<-50) return o; } return null; }
+function warTarget(t){ for(const o of S.tribes){ if(o.id!==t.id&&!isAlly(t,o)&&!inTruce(t,o)&&(t.relations[o.id]??0)<-50) return o; } return null; }
+/* ---------------- v4: دیپلماسی، اتحاد، محاصره و اشغال ---------------- */
+function isAlly(t,o){ return !!(t&&o&&(t.allies||[]).includes(o.id)); }
+function inTruce(t,o){ return !!(t&&o&&((t.truce||{})[o.id]||0)>S.day); }
+function atWarWith(t,o){ return !!(t&&o&&S.battles.some(b=>(b.t1===t.id&&b.t2===o.id)||(b.t1===o.id&&b.t2===t.id))); }
+function chiefOf(t){ return t?S.agents.find(a=>a.id===t.chiefId&&!a.dead):null; }
+function warAppetite(t){
+  const chief=chiefOf(t);
+  const agg=chief?chief.genes.aggression:0.4;
+  const op=chief?chief.opinion:(t.stance||0);
+  let gr=0; for(const k in (t.grievance||{})) gr+=t.grievance[k]||0;
+  let app=agg*0.6+((op+1)/2)*0.25+Math.min(0.3,gr/40);
+  if(t.stock.food<20) app+=0.15; // گرسنگی هم جنگ‌طلب می‌کند
+  return clamp(app,0,1);
+}
+function addGrievance(t,o,n){
+  if(!t||!o||t.id===o.id) return;
+  t.grievance=t.grievance||{}; t.grievance[o.id]=(t.grievance[o.id]||0)+n;
+  t.relations[o.id]=clamp((t.relations[o.id]||0)-n,-100,100);
+  o.relations[t.id]=clamp((o.relations[t.id]||0)-Math.round(n/2),-100,100);
+}
+function tryAlly(t,o){
+  if(!t||!o||t.id===o.id||isAlly(t,o)||atWarWith(t,o)) return false;
+  if((t.relations[o.id]||0)<60) return false;
+  t.allies=t.allies||[]; o.allies=o.allies||[];
+  t.allies.push(o.id); o.allies.push(t.id);
+  t.relations[o.id]=clamp((t.relations[o.id]||0)+5,-100,100); o.relations[t.id]=clamp((o.relations[t.id]||0)+5,-100,100);
+  logEvent(t.name+' و '+o.name+' پیمان اتحاد بستند — حالا از هم دفاع می‌کنند و تجارتشان بهتر است.','good');
+  return true;
+}
+function breakAlliance(t,o){
+  if(!t||!o) return;
+  t.allies=(t.allies||[]).filter(id=>id!==o.id); o.allies=(o.allies||[]).filter(id=>id!==t.id);
+  t.relations[o.id]=clamp((t.relations[o.id]||0)-20,-100,100); o.relations[t.id]=clamp((o.relations[t.id]||0)-20,-100,100);
+  logEvent('اتحاد '+t.name+' و '+o.name+' شکست — رابطه‌شان سرد شد.','bad');
+}
+function offerPeace(t1,t2,byTribute){
+  if(!t1||!t2) return;
+  for(const b of [...S.battles]){
+    if((b.t1===t1.id&&b.t2===t2.id)||(b.t1===t2.id&&b.t2===t1.id)){
+      for(const id of [...b.s1,...b.s2]){ const a=S.agents.find(x=>x.id===id); if(a){ a.battleId=null; a.battleSide=0; } }
+      S.battles.splice(S.battles.indexOf(b),1);
+    }
+  }
+  t1.relations[t2.id]=10; t2.relations[t1.id]=10;
+  t1.truce=t1.truce||{}; t2.truce=t2.truce||{};
+  t1.truce[t2.id]=S.day+3; t2.truce[t1.id]=S.day+3;
+  t1.warFatigue=10; t2.warFatigue=10;
+  t1.warCd=45; t2.warCd=45;
+  logEvent(t1.name+' و '+t2.name+(byTribute?' با پرداخت باج':' پس از مذاکره')+' صلح کردند — تا ۳ روز آتش‌بس است.','good');
+}
+function payTribute(t,o){
+  if(!t||!o||!atWarWith(t,o)) return false;
+  if(t.stock.coins>=15){ t.stock.coins-=15; o.stock.coins=Math.min(COIN_CAP,(o.stock.coins||0)+15); logEvent(t.name+' به '+o.name+' ۱۵ سکه باج داد تا جنگ تمام شود.','good'); offerPeace(t,o,true); return true; }
+  if(t.stock.food>=20){ t.stock.food-=20; o.stock.food=Math.min(foodCap(o),o.stock.food+20); logEvent(t.name+' به '+o.name+' ۲۰ غذا باج داد تا جنگ تمام شود.','good'); offerPeace(t,o,true); return true; }
+  toast('برای باج نه سکه‌ی کافی هست نه غذا');
+  return false;
+}
+function attackBuilding(a,b,dt){
+  const dps=4+fightPower(a)*6;
+  b.hp=(b.hp??(BUILDING_HP[b.type]||60))-dps*dt;
+  a.goal='حمله به '+BUILDINGS[b.type].name;
+  burst(b.x,b.y,'#f43f5e',2,40);
+  if(b.hp<=0) destroyBuilding(b,tribeById(a.tribeId));
+}
+function destroyBuilding(b,byTribe){
+  const t=tribeById(b.tribeId);
+  const def=BUILDINGS[b.type];
+  const bi=S.buildings.indexOf(b); if(bi>=0) S.buildings.splice(bi,1);
+  const qi=S.buildQueue.findIndex(q=>q.buildingId===b.id); if(qi>=0) S.buildQueue.splice(qi,1);
+  if(S.selectedBuilding===b){ S.selectedBuilding=null; updateBuildingCard(); }
+  if(b.ownerFamilyId){ const fam=familyById(b.ownerFamilyId); if(fam){ fam.houseId=null; fam.houselessSince=S.elapsed; } }
+  if(b.renterFamilyId){ const fam=familyById(b.renterFamilyId); if(fam) fam.renterFamilyId=null; }
+  if(t&&byTribe&&byTribe.id!==t.id){ addGrievance(t,byTribe,8); logEvent('«'+def.name+'» در '+t.name+' به دست '+byTribe.name+' ویران شد!'+(b.type==='house'?' خانواده‌ای بی‌خانه شد.':''),'bad'); }
+  else if(t){ logEvent('«'+def.name+'» در '+t.name+' ویران شد.','bad'); }
+  if(t) checkTribeCollapse(t,byTribe);
+}
+function checkTribeCollapse(t,winner){
+  if(!t||!tribeById(t.id)) return;
+  const mem=tribeMembers(t);
+  const built=S.buildings.filter(b=>b.tribeId===t.id&&b.progress>=100).length;
+  const collapsed=mem.length<=2||(built===0&&t.stock.food<=0&&mem.length<5);
+  if(!collapsed) return;
+  dissolveTribe(t,winner);
+}
+function dissolveTribe(t,winner){
+  if(!t||!tribeById(t.id)) return;
+  const mem=tribeMembers(t);
+  if(winner&&tribeById(winner.id)){
+    winner.stock.wood+=t.stock.wood; winner.stock.stone+=t.stock.stone;
+    winner.stock.food=Math.min(foodCap(winner),winner.stock.food+t.stock.food);
+    winner.stock.coins=Math.min(COIN_CAP,(winner.stock.coins||0)+(t.stock.coins||0));
+    for(const b of S.buildings) if(b.tribeId===t.id) b.tribeId=winner.id;
+    for(const a of mem){ a.tribeId=winner.id; a.loyalty=40; a.job=null; }
+    assignJobs(winner);
+    logEvent('قبیله «'+t.name+'» سقوط کرد! سرزمین، انبار و بازماندگانش به '+winner.name+' رسید.','bad');
+  } else {
+    for(const a of mem){ a.tribeId=null; a.loyalty=50; a.job=null; }
+    logEvent('قبیله «'+t.name+'» از بین رفت و بازماندگانش بی‌قبیله شدند.','bad');
+  }
+  for(const o of S.tribes){ if(o.id!==t.id){ o.allies=(o.allies||[]).filter(id=>id!==t.id); if(o.truce) delete o.truce[t.id]; if(o.grievance) delete o.grievance[t.id]; } }
+  S.tribes.splice(S.tribes.indexOf(t),1);
+  for(const b of [...S.battles]){ if(b.t1===t.id||b.t2===t.id){ for(const id of [...b.s1,...b.s2]){ const a=S.agents.find(x=>x.id===id); if(a){ a.battleId=null; a.battleSide=0; } } S.battles.splice(S.battles.indexOf(b),1); } }
+}
+function diplomacyTick(t,dt){
+  t.diplomacyT=(t.diplomacyT||0)-dt; if(t.diplomacyT>0) return; t.diplomacyT=15+rand(0,10);
+  for(const o of S.tribes){
+    if(o.id===t.id||isAlly(t,o)||atWarWith(t,o)) continue;
+    const r=t.relations[o.id]||0;
+    if(r>60&&Math.random()<0.5){ tryAlly(t,o); return; }
+    if(r>0&&r<60&&t.stock.food>150&&Math.random()<0.4){
+      t.stock.food-=10; o.stock.food=Math.min(foodCap(o),o.stock.food+10);
+      t.relations[o.id]=clamp(r+10,-100,100); o.relations[t.id]=clamp((o.relations[t.id]||0)+10,-100,100);
+      logEvent(t.name+' به '+o.name+' ۱۰ غذا هدیه داد — رابطه بهتر شد.','good');
+      return;
+    }
+  }
+  if((t.warFatigue||0)>50){
+    const enemy=S.tribes.find(o=>o.id!==t.id&&atWarWith(t,o));
+    if(enemy){ offerPeace(t,enemy); return; }
+  }
+}
+function needsTick(t,dt){
+  t.needsT=(t.needsT||0)-dt; if(t.needsT>0) return; t.needsT=5;
+  const prev=t.prevStock||{wood:t.stock.wood,stone:t.stock.stone,food:t.stock.food};
+  const dayFrac=5/(S.settings.dayLength||60);
+  t.needsBal={
+    food:Math.round((t.stock.food-prev.food)/dayFrac),
+    wood:Math.round((t.stock.wood-prev.wood)/dayFrac),
+    stone:Math.round((t.stock.stone-prev.stone)/dayFrac),
+  };
+  t.prevStock={wood:t.stock.wood,stone:t.stock.stone,food:t.stock.food,coins:t.stock.coins,meals:t.stock.meals||0};
+  const memN=tribeMembers(t).length;
+  let note='';
+  if(t.needsBal.food<0&&t.stock.food<80){
+    if((t.jobs.farmer||0)<8){ t.jobs.farmer=(t.jobs.farmer||0)+1; note='کمبود غذا — کشاورز بیشتر شد'; }
+    else if(hasTech(t,'farming')&&S.buildings.filter(b=>b.tribeId===t.id&&b.type==='farm').length<4&&!S.buildQueue.some(q=>q.tribeId===t.id&&q.type==='farm')&&t.stock.wood>=8){ queueBuilding(t,'farm',t.home.x+rand(-90,90),t.home.y+rand(-90,90),true); note='کمبود غذا — مزرعه‌ی تازه ساخته شد'; }
+  } else if(t.needsBal.wood<0&&t.stock.wood<60){
+    if((t.jobs.woodcutter||0)<6){ t.jobs.woodcutter=(t.jobs.woodcutter||0)+1; note='کمبود چوب — چوب‌بر بیشتر شد'; }
+  } else if(t.needsBal.stone<0&&t.stock.stone<40){
+    if((t.jobs.miner||0)<6){ t.jobs.miner=(t.jobs.miner||0)+1; note='کمبود سنگ — معدنچی بیشتر شد'; }
+  } else if(t.stock.food>300&&(t.jobs.farmer||0)>2){
+    t.jobs.farmer--; t.jobs.scholar=Math.min(8,(t.jobs.scholar||0)+1); note='غذای اضافه — کارگر به پژوهش رفت';
+  } else if(t.stock.wood>200&&(t.jobs.woodcutter||0)>2){
+    t.jobs.woodcutter--; t.jobs.blacksmith=Math.min(6,(t.jobs.blacksmith||0)+1); note='چوب اضافه — کارگر به صنعت رفت';
+  }
+  if(note){ t.needsNote=note; logEvent(t.name+': '+note+'.','good'); assignJobs(t); }
+}
 /* قدرت جنگ: جثه و پرخاشگری + سلاح + تمرین (سربازخانه)؛ دفاع از سپر و زره */
 function fightPower(a){
   const w=a.equip&&a.equip.weapon?WEAPONS[a.equip.weapon]:null;
@@ -1970,12 +2161,13 @@ function raidFight(a,b){
   const dmg=Math.max(10,Math.round(18+pa*10-defenseOf(lose)*4));
   lose.health-=dmg; lose.energy=Math.max(0,lose.energy-10); lose.combatT=8;
   burst(lose.x,lose.y,'#f43f5e',10,90); floater(lose.x,lose.y-18,'نبرد','#fda4af');
-  if(lose.health<=0) killAgent(lose,'جنگ');
+  if(lose.health<=0){ killAgent(lose,'جنگ'); const lt=tribeById(lose.tribeId), wt=tribeById(win.tribeId); if(lt&&wt) addGrievance(lt,wt,5); }
 }
 function nearestResourceKind(a,kind){
   let best=null,bd=Infinity;
   const list=kind==='tree'?S.trees:S.stones;
-  for(const r of list){ const d=(r.x-a.x)**2+(r.y-a.y)**2; if(d<bd){bd=d;best=r;} }
+  for(const r of list){ if(r.sapling) continue; // نهال هنوز قابل برداشت نیست — باید بالغ شود
+    const d=(r.x-a.x)**2+(r.y-a.y)**2; if(d<bd){bd=d;best=r;} }
   return best;
 }
 function gatherStep(a,t,dt,speed,know){
@@ -1994,7 +2186,7 @@ function gatherStep(a,t,dt,speed,know){
       if(fam){ fam.mats=fam.mats||{wood:0,stone:0}; fam.mats.wood+=a.inv.wood; fam.mats.stone+=a.inv.stone; a.inv.wood=0; a.inv.stone=0; a.goal='بردن منابع به خانواده'; }
       else if(a.inv.wood>=10&&a.inv.stone>=5){
         a.inv.wood-=10; a.inv.stone-=5;
-        const b={id:S.nextBuildId++,type:'house',x:clamp(a.x+rand(-30,30),30,WORLD_W-30),y:clamp(a.y+rand(-30,30),30,WORLD_H-30),tribeId:null,progress:0,growth:0,milkT:0,createdAt:S.elapsed,ownerFamilyId:null};
+        const b=newBuilding(null,'house',a.x+rand(-30,30),a.y+rand(-30,30),null);
         S.buildings.push(b); S.buildQueue.push({tribeId:null,type:'house',buildingId:b.id});
         a.goal='ساختن خانه‌ی شخصی'; floater(a.x,a.y-16,'خانه‌ی شخصی','#fde68a');
       } else { a.goal='جمع‌آوری برای خود'; return false; }
@@ -2020,7 +2212,9 @@ function gatherStep(a,t,dt,speed,know){
     a.harvestT=0; tgt.amount--;
     if(tgt.kind==='tree'){ a.inv.wood+=2; burst(tgt.x,tgt.y,'#34d399',4,40); }
     else { a.inv.stone+=2; burst(tgt.x,tgt.y,'#94a3b8',4,40); }
-    if(tgt.amount<=0){ if(tgt.kind==='tree'){ const i=S.trees.indexOf(tgt); if(i>=0) S.trees.splice(i,1); } else { const i=S.stones.indexOf(tgt); if(i>=0) S.stones.splice(i,1); } a.target=null; }
+    if(tgt.amount<=0){ if(tgt.kind==='tree'){ const i=S.trees.indexOf(tgt); if(i>=0) S.trees.splice(i,1);
+        if(Math.random()<0.4&&S.trees.length<110) S.trees.push({x:tgt.x+rand(-40,40),y:tgt.y+rand(-40,40),amount:1,kind:'tree',sapling:true}); // جمع‌آور هم گاهی نهال می‌کارد
+      } else { const i=S.stones.indexOf(tgt); if(i>=0) S.stones.splice(i,1); } a.target=null; }
   }
   return true;
 }
@@ -2040,7 +2234,9 @@ function harvestKindStep(a,t,dt,speed,know,kind){
     a.harvestT=0; tgt.amount--;
     if(kind==='tree'){ a.inv.wood+=2; burst(tgt.x,tgt.y,'#34d399',4,40); }
     else { a.inv.stone+=2; burst(tgt.x,tgt.y,'#94a3b8',4,40); }
-    if(tgt.amount<=0){ const arr=kind==='tree'?S.trees:S.stones; const i=arr.indexOf(tgt); if(i>=0) arr.splice(i,1); a.target=null; }
+    if(tgt.amount<=0){ const arr=kind==='tree'?S.trees:S.stones; const i=arr.indexOf(tgt); if(i>=0) arr.splice(i,1);
+      if(kind==='tree'&&Math.random()<0.6&&S.trees.length<110){ S.trees.push({x:tgt.x+rand(-40,40),y:tgt.y+rand(-40,40),amount:1,kind:'tree',sapling:true}); } // چوب‌بر نهال می‌کارد
+      a.target=null; }
   }
   return true;
 }
@@ -2055,8 +2251,8 @@ function hunterStep(a,t,dt,speed,know){
   const pw=fightPower(a), aw=prey.kind==='bear'?0.9:0.55;
   if(pw+rand(0.3)>=aw){
     prey.health-=35; burst(prey.x,prey.y,'#f43f5e',8,70);
-    if(prey.health<=0){ prey.dead=true; const gain=prey.kind==='bear'?30:20;
-      if(t) t.stock.food+=gain; else a.energy=clamp(a.energy+gain,0,100);
+    if(prey.health<=0){ prey.dead=true; const gain=(prey.kind==='bear'?30:20)+(t&&hasBuilding(t,'butcher')?10:0); // قصابی: +۱۰ غذا از هر شکار
+      if(t) t.stock.food=Math.min(foodCap(t),t.stock.food+gain); else a.energy=clamp(a.energy+gain,0,100);
       floater(prey.x,prey.y-14,'شکار شد! +'+fa(gain)+' غذا','#fda4af');
       logEvent(a.name+' یک '+(prey.kind==='bear'?'خرس':'گرگ')+' را شکار کرد.','good');
     }
@@ -2088,11 +2284,11 @@ function bestCraftable(t,kind){
   return best;
 }
 function blacksmithStep(a,t,dt,speed,know){
-  const ws=!t?null:S.buildings.find(b=>b.tribeId===t.id&&(b.type==='armory'||b.type==='workshop')&&b.progress>=100);
+  const ws=!t?null:S.buildings.find(b=>b.tribeId===t.id&&(b.type==='armory'||b.type==='workshop'||b.type==='smithy')&&b.progress>=100);
   if(!t||!ws) return gatherStep(a,t,dt,speed,know);
-  a.goal='آهنگری در '+(ws.type==='armory'?'اسلحه‌خانه':'کارگاه');
+  a.goal='آهنگری در '+(ws.type==='armory'?'اسلحه‌خانه':ws.type==='smithy'?'آهنگری':'کارگاه');
   if(!moveToward(a,ws.x,ws.y,dt,speed)) return true;
-  a.workT=(a.workT||0)+dt*(ws.type==='armory'?1.5:1)*know;
+  a.workT=(a.workT||0)+dt*(ws.type==='smithy'?2:ws.type==='armory'?1.5:1)*know; // آهنگری: دو برابر سریع‌تر
   if(a.workT>=8){
     a.workT=0;
     const kind=pick(['weapon','weapon','shield','armor']);
@@ -2107,21 +2303,24 @@ function blacksmithStep(a,t,dt,speed,know){
 }
 function cookStep(a,t,dt,speed,know){
   if(!t) return gatherStep(a,t,dt,speed,know);
-  a.goal='آشپزی';
-  if(!moveToward(a,t.centre.x,t.centre.y,dt,speed)) return true;
-  a.workT=(a.workT||0)+dt;
+  const bakery=S.buildings.find(b=>b.tribeId===t.id&&b.type==='bakery'&&b.progress>=100);
+  a.goal=bakery?'پخت نان در نانوایی':'آشپزی';
+  if(!moveToward(a,bakery?bakery.x:t.centre.x,bakery?bakery.y:t.centre.y,dt,speed)) return true;
+  a.workT=(a.workT||0)+dt*(bakery?2:1); // نانوایی: دو برابر سریع‌تر
   if(a.workT>=8){ a.workT=0; if(t.stock.food>=2){ t.stock.food-=2; t.stock.meals=(t.stock.meals||0)+3; floater(t.centre.x,t.centre.y-16,'غذای پخته +۳','#fde68a'); } }
   return true;
 }
 function sexworkerStep(a,t,dt,speed,know){
-  let client=null,bd=160*160;
+  const inn=t&&hasBuilding(t,'inn');
+  const range=inn?240:160; // مهمانخانه: مشتری از دورتر هم می‌آید
+  let client=null,bd=range*range;
   for(const o of S.agents){ if(o===a||o.dead||o.age<0.4||(o.sexNeed||0)<60) continue; const d=(o.x-a.x)**2+(o.y-a.y)**2; if(d<bd){bd=d;client=o;} }
   if(!client){ a.goal='در انتظار مشتری'; return gatherStep(a,t,dt,speed,know); }
   a.goal='برطرف کردن نیاز جنسی';
   if(!moveToward(a,client.x,client.y,dt,speed)) return true;
   a.sexNeed=0; client.sexNeed=0;
   const famA=a.familyId?S.families.find(f=>f.id===a.familyId):null;
-  if(famA) famA.wealth=(famA.wealth||0)+2; // دستمزد
+  if(famA) famA.wealth=(famA.wealth||0)+(inn?3:2); // دستمزد (مهمانخانه: +۱ بیشتر)
   if(Math.random()<0.06){ // بارداری خارج از خانواده — احتمال کم
     reproduce(a,client,true);
     logEvent('بارداری خارج از خانواده رخ داد.','bad');
@@ -2137,7 +2336,7 @@ function farmerStep(a,t,dt,speed,know){
   a.goal='کار در مزرعه';
   if(!moveToward(a,f.x,f.y,dt,speed)) return true;
   f.growth=clamp(f.growth+dt*6*know,0,100);
-  if(f.growth>=100){ f.growth=0; const yld=12+Math.round(5*know); t.stock.food+=yld; burst(f.x,f.y,'#fbbf24',8,60); floater(f.x,f.y-14,'+'+fa(yld)+' غذا','#fde68a'); }
+  if(f.growth>=100){ f.growth=0; const yld=Math.round((12+Math.round(5*know))*(1+0.5*((f.level||1)-1))); t.stock.food=Math.min(foodCap(t),t.stock.food+yld); burst(f.x,f.y,'#fbbf24',8,60); floater(f.x,f.y-14,'+'+fa(yld)+' غذا','#fde68a'); }
   return true;
 }
 function builderStep(a,t,dt,speed,know){
@@ -2182,8 +2381,26 @@ function warriorStep(a,t,dt,speed,know){
       const def=nearestAgentOfTribe(enemy,a.x,a.y,60);
       if(def) raidFight(a,def);
       if(Math.random()<0.5) logEvent('جنگجوی '+t.name+' به '+enemy.name+' حمله کرد و '+fa(steal)+' غذا دزدید!','bad');
+      addGrievance(enemy,t,2); // دزدی کینه می‌سازد
     }
     return true;
+  }
+  // محاصره: نزدیک خانه‌ی دشمن، جنگجو به نزدیک‌ترین ساختمان دشمن حمله می‌کند
+  if(enemy&&Math.hypot(a.x-enemy.home.x,a.y-enemy.home.y)<320){
+    let b=null,bd=Infinity;
+    for(const bb of S.buildings){ if(bb.tribeId!==enemy.id||bb.progress<100) continue; const d=(bb.x-a.x)**2+(bb.y-a.y)**2; if(d<bd){bd=d;b=bb;} }
+    if(b){
+      // برج‌های دشمن به محاصره‌کننده شلیک می‌کنند
+      for(const tw of S.buildings){
+        if(tw.tribeId===enemy.id&&tw.type==='tower'&&tw.progress>=100&&Math.hypot(tw.x-a.x,tw.y-a.y)<150){
+          a.health-=5*(1+0.5*((tw.level||1)-1))*dt; a.combatT=8;
+          if(a.health<=0){ killAgent(a,'جنگ'); return true; }
+        }
+      }
+      a.goal='محاصره‌ی '+BUILDINGS[b.type].name;
+      if(Math.hypot(b.x-a.x,b.y-a.y)<30){ attackBuilding(a,b,dt); return true; }
+      moveToward(a,b.x,b.y,dt,speed); return true;
+    }
   }
   a.goal='گشت‌زنی';
   if(!a.patrol||Math.hypot(a.patrol.x-a.x,a.patrol.y-a.y)<20){ a.patrol={x:t.centre.x+rand(-150,150),y:t.centre.y+rand(-150,150)}; }
@@ -2196,11 +2413,12 @@ function scholarStep(a,t,dt,speed,know){
   if(!t){ a.goal='اندیشیدن'; a.knowledge=clamp(a.knowledge+dt*0.008,0,1); return true; }
   const uni=S.buildings.find(b=>b.tribeId===t.id&&b.type==='university'&&b.progress>=100);
   const sch=uni||S.buildings.find(b=>b.tribeId===t.id&&b.type==='school'&&b.progress>=100);
-  let rp=0.8;
+  const lib=hasBuilding(t,'library');
+  let rp=0.8*(lib?1.5:1); // کتابخانه: پژوهش ۱٫۵ برابر
   if(sch){
     a.goal=uni?'پژوهش در دانشگاه':'آموزش در مدرسه';
     if(!moveToward(a,sch.x,sch.y,dt,speed)) return true;
-    rp=uni?2.2:1.4; a.knowledge=clamp(a.knowledge+dt*0.02,0,1);
+    rp=(uni?2.2:1.4)*(lib?1.5:1); a.knowledge=clamp(a.knowledge+dt*0.02*(lib?1.5:1),0,1);
   } else { a.goal='اندیشیدن'; }
   t.research+=rp*know*dt; a.knowledge=clamp(a.knowledge+dt*0.008,0,1); t.culture+=0.02*dt;
   return true;
@@ -2217,28 +2435,79 @@ function healerStep(a,t,dt,speed,know){
   a.goal='درمان '+sick.name;
   if(!moveToward(a,sick.x,sick.y,dt,speed)) return true;
   const med=(t&&hasTech(t,'medicine'))?1.6:1;
-  sick.health=clamp(sick.health+9*med*dt,0,100);
+  const clinic=t&&hasBuilding(t,'clinic')?1.5:1; // درمانگاه: ۱٫۵ برابر سریع‌تر
+  sick.health=clamp(sick.health+9*med*clinic*dt,0,100);
   if(sick.plague>0){ sick.plagueT+=dt*2*med; if(sick.plagueT>14){ sick.plague=0; sick.health=clamp(sick.health+20,0,100); } }
   return true;
+}
+/* v4: قیمت با کمیابی کالا در مقصد بالا می‌رود؛ متحدان ۱۰٪ بهتر می‌خرند */
+function tradePrice(seller,buyer,good){
+  const cap=good==='food'?foodCap(buyer):STOCK_CAP[good];
+  const scarcity=1-((buyer.stock[good]||0)/cap);
+  let p=2*(1+scarcity);
+  if(isAlly(seller,buyer)) p*=1.1;
+  return Math.max(1,Math.round(p));
 }
 function traderStep(a,t,dt,speed,know){
   const market=S.buildings.find(b=>b.tribeId===t.id&&b.type==='market'&&b.progress>=100);
   if(!market||!hasTech(t,'money')) return gatherStep(a,t,dt,speed,know);
   a.tradeT=(a.tradeT||0)-dt;
+  // اگر مقصد تجاری دارد، اول به بازار مقصد برود
+  if(a.tradeDest){
+    const dest=tribeById(a.tradeDest);
+    const dm=dest?S.buildings.find(b=>b.tribeId===dest.id&&b.type==='market'&&b.progress>=100):null;
+    if(!dest||!dm||dest.id===t.id){ a.tradeDest=null; }
+    else {
+      a.goal='تجارت با '+dest.name;
+      if(!moveToward(a,dm.x,dm.y,dt,speed)) return true;
+      const good=a.tradeGood, amt=5;
+      if(good&&t.stock[good]>=amt){
+        const price=tradePrice(t,dest,good);
+        const coins=amt*price;
+        let done=false;
+        if((dest.stock.coins||0)>=coins){
+          t.stock[good]-=amt;
+          dest.stock[good]=Math.min(good==='food'?foodCap(dest):STOCK_CAP[good],dest.stock[good]+amt);
+          dest.stock.coins-=coins; t.stock.coins=Math.min(COIN_CAP,(t.stock.coins||0)+coins);
+          done=true;
+          if(S.elapsed-(t.tradeLogT||0)>30){ t.tradeLogT=S.elapsed; logEvent('بازرگان '+t.name+' به بازار '+dest.name+' رفت و '+fa(amt)+' '+(good==='food'?'غذا':good==='wood'?'چوب':'سنگ')+' را '+fa(coins)+' سکه فروخت.','good'); }
+        } else {
+          // تهاتر: کالا با کالا، وقتی مقصد سکه ندارد
+          const back=dest.stock.wood>40&&t.stock.wood<40?'wood':dest.stock.stone>40&&t.stock.stone<40?'stone':dest.stock.food>60&&t.stock.food<40?'food':null;
+          if(back&&dest.stock[back]>=amt){
+            t.stock[good]-=amt; dest.stock[good]=Math.min(good==='food'?foodCap(dest):STOCK_CAP[good],dest.stock[good]+amt);
+            dest.stock[back]-=amt; t.stock[back]=Math.min(back==='food'?foodCap(t):STOCK_CAP[back],t.stock[back]+amt);
+            done=true;
+            if(S.elapsed-(t.tradeLogT||0)>30){ t.tradeLogT=S.elapsed; logEvent('بازرگان '+t.name+' با '+dest.name+' تهاتر کرد: '+fa(amt)+' '+(good==='food'?'غذا':good==='wood'?'چوب':'سنگ')+' در برابر '+fa(amt)+' '+(back==='food'?'غذا':back==='wood'?'چوب':'سنگ')+'.','good'); }
+          }
+        }
+        if(done) S.tradeCount=(S.tradeCount||0)+1;
+      }
+      a.tradeDest=null; a.tradeT=12; return true;
+    }
+  }
   const arr=moveToward(a,market.x,market.y,dt,speed);
   if(!arr){ a.goal='رفتن به بازار'; return true; }
   if(a.tradeT>0){ a.goal='در بازار'; return true; }
   a.goal='تجارت در بازار';
   a.tradeT=8;
-  if(t.stock.food>40){ t.stock.food-=10; t.stock.coins+=12; floater(market.x,market.y-16,'+۱۲ سکه','#fde68a'); }
-  else if(t.stock.wood>40){ t.stock.wood-=10; t.stock.coins+=10; floater(market.x,market.y-16,'+۱۰ سکه','#fde68a'); }
-  else if(t.stock.food<20&&t.stock.coins>=10){ t.stock.coins-=10; t.stock.food+=12; floater(market.x,market.y-16,'خرید غذا','#a7f3d0'); }
+  // اول: تجارت بین‌قبیله‌ای با قبیله‌ای که کالا را لازم دارد یا سکه دارد
   for(const o of S.tribes){
-    if(o.id!==t.id&&hasTech(o,'money')&&(t.relations[o.id]||0)>30&&t.stock.food>40&&o.stock.coins>=6){
-      t.stock.food-=5; o.stock.food+=5; o.stock.coins-=6; t.stock.coins+=6;
-      t.relations[o.id]=clamp((t.relations[o.id]||0)+2,-100,100); o.relations[t.id]=clamp((o.relations[t.id]||0)+2,-100,100);
-    }
+    if(o.id===t.id||!hasTech(o,'money')) continue;
+    const r=t.relations[o.id]||0;
+    if(r<=0&&!isAlly(t,o)) continue;
+    const om=S.buildings.find(b=>b.tribeId===o.id&&b.type==='market'&&b.progress>=100);
+    if(!om) continue;
+    const surplus=t.stock.food>60?'food':t.stock.wood>60?'wood':t.stock.stone>40?'stone':null;
+    if(!surplus) break;
+    const need=o.stock.food<20?'food':o.stock.wood<20?'wood':o.stock.stone<15?'stone':null;
+    const theyHaveCoins=(o.stock.coins||0)>=10;
+    if((need&&need===surplus)||theyHaveCoins){ a.tradeDest=o.id; a.tradeGood=surplus; a.goal='رفتن به بازار '+o.name; return true; }
   }
+  // تجارت داخلی: فروش مازاد و خرید کمبود (سقف سکه رعایت می‌شود)
+  if(t.stock.food>40&&(t.stock.coins||0)<COIN_CAP){ t.stock.food-=10; t.stock.coins+=12; floater(market.x,market.y-16,'+۱۲ سکه','#fde68a'); }
+  else if(t.stock.wood>40&&(t.stock.coins||0)<COIN_CAP){ t.stock.wood-=10; t.stock.coins+=10; floater(market.x,market.y-16,'+۱۰ سکه','#fde68a'); }
+  else if(t.stock.food<20&&(t.stock.coins||0)>=10){ t.stock.coins-=10; t.stock.food=Math.min(foodCap(t),t.stock.food+12); floater(market.x,market.y-16,'خرید غذا','#a7f3d0'); }
   return true;
 }
 function herderStep(a,t,dt,speed,know){
@@ -2255,7 +2524,7 @@ function herderStep(a,t,dt,speed,know){
   a.goal='دامداری';
   if(!moveToward(a,past.x,past.y,dt,speed)) return true;
   past.milkT=(past.milkT||0)+dt;
-  if(past.milkT>6){ past.milkT=0; const herd=S.animals.filter(x=>x.tribeId===t.id); if(herd.length){ t.stock.food+=2*herd.length; floater(past.x,past.y-16,'+'+fa(2*herd.length)+' غذا','#fde68a'); } }
+  if(past.milkT>6){ past.milkT=0; const herd=S.animals.filter(x=>x.tribeId===t.id); if(herd.length){ const gain=2*herd.length; t.stock.food=Math.min(foodCap(t),t.stock.food+gain); floater(past.x,past.y-16,'+'+fa(gain)+' غذا','#fde68a'); } }
   return true;
 }
 function jobStep(a,dt,speed){
@@ -2263,10 +2532,20 @@ function jobStep(a,dt,speed){
   if(t&&a.energy<45&&t.stock.food>0){
     a.goal='رفتن به انبار برای غذا';
     if(moveToward(a,t.centre.x,t.centre.y,dt,speed)){
-      if((t.stock.meals||0)>0){ t.stock.meals-=1; a.energy=clamp(a.energy+30,0,100); a.goal='خوردن غذای پخته'; }
+      if((t.stock.meals||0)>0){ t.stock.meals-=1; a.energy=clamp(a.energy+(hasBuilding(t,'bakery')?40:30),0,100); a.goal='خوردن غذای پخته'; }
       else if(t.stock.food>=1){ t.stock.food-=1; a.energy=clamp(a.energy+18,0,100); a.goal='خوردن از انبار'; }
     }
     return true;
+  }
+  // انبار خالی است؟ خانواده با ثروتش از بازار غذا می‌خرد
+  if(t&&a.energy<45&&t.stock.food<=0){
+    const market=S.buildings.find(b=>b.tribeId===t.id&&b.type==='market'&&b.progress>=100);
+    const fam=agentFamily(a);
+    if(market&&fam&&(fam.wealth||0)>=3){
+      a.goal='خرید غذا از بازار';
+      if(moveToward(a,market.x,market.y,dt,speed)){ fam.wealth-=3; a.energy=clamp(a.energy+18,0,100); a.goal='خرید غذا از بازار'; }
+      return true;
+    }
   }
   const know=1+a.knowledge*0.5;
   switch(a.job){
@@ -2292,6 +2571,7 @@ function jobStep(a,dt,speed){
 /* ---------------- مرگ و تولد ---------------- */
 function killAgent(a,cause,silent){
   if(a.dead) return; a.dead=true; S.deaths++; S.deathsBy[cause]=(S.deathsBy[cause]||0)+1;
+  if(cause==='جنگ'){ const tr=tribeById(a.tribeId); if(tr) tr.warFatigue=clamp((tr.warFatigue||0)+4,0,100); } // خستگی از جنگ بالا می‌رود
   S.corpses.push({x:a.x,y:a.y,r:a.genes.size*7+6,life:14,energy:14});
   burst(a.x,a.y,cause==='گرسنگی'?'#94a3b8':'#fb7185',12,80);
   floater(a.x,a.y-14,cause,'#fda4af');
@@ -2393,7 +2673,7 @@ function queueBuilding(t,type,x,y,auto,ownerFam){
   if(def.tech&&!hasTech(t,def.tech)){ if(!auto) toast('اول باید فناوری «'+TECHS.find(z=>z.id===def.tech).name+'» را کشف کنی'); return false; }
   if(t.stock.wood<def.wood||t.stock.stone<def.stone){ if(!auto) toast('منابع کافی نیست: '+fa(def.wood)+' چوب و '+fa(def.stone)+' سنگ لازم است'); return false; }
   t.stock.wood-=def.wood; t.stock.stone-=def.stone;
-  const b={id:S.nextBuildId++,type,x:clamp(x,30,WORLD_W-30),y:clamp(y,30,WORLD_H-30),tribeId:t.id,progress:0,growth:0,milkT:0,createdAt:S.elapsed,ownerFamilyId:ownerFam||null,renterFamilyId:null};
+  const b=newBuilding(t.id,type,x,y,ownerFam);
   S.buildings.push(b);
   S.buildQueue.push({tribeId:t.id,type,buildingId:b.id});
   if(!auto) logEvent(t.name+' ساخت «'+def.name+'» را شروع کرد.','good');
@@ -2424,15 +2704,17 @@ function animalsTick(dt){
   }
 }
 function civTick(dt){
-  if(S.trees.length<90&&Math.random()<dt*0.8) S.trees.push({x:rand(40,WORLD_W-40),y:rand(40,WORLD_H-40),amount:5,kind:'tree'});
-  if(S.stones.length<45&&Math.random()<dt*0.5) S.stones.push({x:rand(40,WORLD_W-40),y:rand(40,WORLD_H-40),amount:4,kind:'stone'});
+  /* v4: رویش درخت متعادل‌تر — آهسته‌تر، با نهال که باید بالغ شود؛ چوب واقعاً محدود می‌شود */
+  if(S.trees.length<110&&Math.random()<dt*0.12) S.trees.push({x:rand(40,WORLD_W-40),y:rand(40,WORLD_H-40),amount:1,kind:'tree',sapling:true});
+  if(S.stones.length<45&&Math.random()<dt*0.3) S.stones.push({x:rand(40,WORLD_W-40),y:rand(40,WORLD_H-40),amount:4,kind:'stone'});
   animalsTick(dt);
   wildTick(dt);
   for(const t of S.tribes){
     if(!t.home) t.home={x:t.centre.x,y:t.centre.y}; // خانه‌ی ثابت قبیله؛ مرکز قبیله دیگر با میانگین اعضا جابه‌جا نمی‌شود
     const schools=S.buildings.filter(b=>b.tribeId===t.id&&b.type==='school'&&b.progress>=100).length;
     const unis=S.buildings.filter(b=>b.tribeId===t.id&&b.type==='university'&&b.progress>=100).length;
-    t.research+=(schools*0.15+unis*0.4)*dt;
+    const libs=S.buildings.filter(b=>b.tribeId===t.id&&b.type==='library'&&b.progress>=100).length;
+    t.research+=(schools*0.15+unis*0.4+libs*0.3)*dt;
     t.culture+=(schools*0.05+unis*0.1)*dt;
     if(t.culture>=50*(t.festivals+1)){ t.festivals++; t.festivalUntil=S.elapsed+20; logEvent('جشنواره‌ی '+t.name+' برگزار شد! فرهنگ بالا رفت — اعضا شادتر و بارورتر شدند.','good'); }
     if(!t.researchTarget||t.techs[t.researchTarget]){ const av=availableTechs(t); t.researchTarget=av.length?av.sort((a,b)=>a.cost-b.cost)[0].id:null; }
@@ -2444,7 +2726,11 @@ function civTick(dt){
       if(target.id==='writing') logEvent('نوشتار کشف شد — حالا می‌شود دانشگاه ساخت.','good');
       if(target.id==='medicine') logEvent('پزشکی کشف شد — حالا می‌شود بیمارستان ساخت.','good');
     }
-    for(const o of S.tribes){ if(o.id!==t.id){ const r=t.relations[o.id]||0; t.relations[o.id]=r+(0-r)*0.002*dt; } }
+    /* v4: دوستی آهسته فراموش می‌شود، کینه خیلی آهسته‌تر — دشمنی‌ها می‌مانند */
+    for(const o of S.tribes){ if(o.id!==t.id){ const r=t.relations[o.id]||0; const rate=r>=0?0.001:0.0002; t.relations[o.id]=r+(0-r)*rate*dt; } }
+    t.warFatigue=clamp((t.warFatigue||0)-dt*0.1,0,100);
+    diplomacyTick(t,dt);
+    needsTick(t,dt);
     const memN=tribeMembers(t).length;
     const houseN=S.buildings.filter(b=>b.tribeId===t.id&&b.type==='house').length+S.buildQueue.filter(q=>q.tribeId===t.id&&q.type==='house').length;
     const houseWant=Math.min(3,1+Math.floor(memN/30));
@@ -2463,7 +2749,7 @@ function civTick(dt){
     if(t.plantCd<=0){
       let near=0; for(const tr of S.trees){ if((tr.x-t.home.x)**2+(tr.y-t.home.y)**2<300*300) near++; }
       if(near<4){ t.plantCd=12;
-        S.trees.push({x:t.home.x+rand(-130,130),y:t.home.y+rand(-130,130),amount:2,kind:'tree',sapling:true});
+        S.trees.push({x:t.home.x+rand(-130,130),y:t.home.y+rand(-130,130),amount:1,kind:'tree',sapling:true});
         if(!t.plantedLogged){ t.plantedLogged=true; logEvent(t.name+' یاد گرفت نزدیک خانه درخت بکارد — منابع محلی تجدید می‌شوند.','good'); }
       }
     }
@@ -2479,8 +2765,8 @@ function civTick(dt){
   S.equipT=(S.equipT||0)+dt; if(S.equipT>5){ S.equipT=0; equipTick(); }
   for(const t of [...S.tribes]) if(!tribeMembers(t).length){ S.tribes.splice(S.tribes.indexOf(t),1); logEvent('قبیله «'+t.name+'» چون عضوی نداشت از بین رفت.','bad'); }
   S.tribeLessT=(S.tribeLessT||0)+dt; if(S.tribeLessT>5){ S.tribeLessT=0; assignTribelessJobs(); }
-  // نهال‌ها رشد می‌کنند؛ ساختمان نیمه‌کاره‌ی رها شده منابعش را پس می‌دهد
-  for(const tr of S.trees) if(tr.sapling&&tr.amount<5){ tr.amount=Math.min(5,tr.amount+dt*0.15); if(tr.amount>=5) tr.sapling=false; }
+  // نهال‌ها آهسته رشد می‌کنند (حدود ۸۰ ثانیه تا بلوغ)؛ ساختمان نیمه‌کاره‌ی رها شده منابعش را پس می‌دهد
+  for(const tr of S.trees) if(tr.sapling&&tr.amount<5){ tr.amount=Math.min(5,tr.amount+dt*0.05); if(tr.amount>=5) tr.sapling=false; }
   for(const b of [...S.buildings]){ if(b.progress<100&&S.elapsed-(b.createdAt||0)>150){
     const t=tribeById(b.tribeId), def=BUILDINGS[b.type];
     if(t){ t.stock.wood+=def.wood; t.stock.stone+=def.stone; }
@@ -2592,25 +2878,54 @@ function familyTick(dt){
       if(b){ f.houseId=b.id; f.houselessSince=S.elapsed; }
     } else if(!t&&f.wealth>=20){
       f.wealth-=20;
-      const b={id:S.nextBuildId++,type:'house',x:clamp(member.x+rand(-40,40),30,WORLD_W-30),y:clamp(member.y+rand(-40,40),30,WORLD_H-30),tribeId:null,progress:0,growth:0,milkT:0,createdAt:S.elapsed,ownerFamilyId:f.id,renterFamilyId:null};
+      const b=newBuilding(null,'house',member.x+rand(-40,40),member.y+rand(-40,40),f.id);
       S.buildings.push(b); S.buildQueue.push({tribeId:null,type:'house',buildingId:b.id}); f.houseId=b.id; f.houselessSince=S.elapsed;
     } else if(f.mats&&f.mats.wood>=10&&f.mats.stone>=5){
       f.mats.wood-=10; f.mats.stone-=5;
-      const b={id:S.nextBuildId++,type:'house',x:clamp(member.x+rand(-40,40),30,WORLD_W-30),y:clamp(member.y+rand(-40,40),30,WORLD_H-30),tribeId:null,progress:0,growth:0,milkT:0,createdAt:S.elapsed,ownerFamilyId:f.id,renterFamilyId:null};
+      const b=newBuilding(null,'house',member.x+rand(-40,40),member.y+rand(-40,40),f.id);
       S.buildings.push(b); S.buildQueue.push({tribeId:null,type:'house',buildingId:b.id}); f.houseId=b.id; f.houselessSince=S.elapsed;
     }
   }
 }
+/* v4: انبار دیگر بی‌پایان نمی‌ماند — مازاد مداوم و دیده‌شده خرج می‌شود:
+   اول زیرساخت پایه، بعد ارتقای ساختمان‌ها، بعد خانه/مزرعه‌ی بیشتر، بعد فروش مازاد به کاروان‌ها.
+   دلیل انبارش قبلی: autoInfra قدیمی فقط وقتی چوب≥۲۰۰ و سنگ≥۱۰۰ بود یک ساختمان می‌ساخت و
+   وقتی هر ۶ زیرساخت ساخته می‌شد، هیچ سینکی نمی‌ماند — چوب/سنگ تا سقف می‌رفتند و می‌ماندند. */
 function autoInfra(t){
-  if(t.stock.wood<200||t.stock.stone<100) return;
   const has=(type)=>S.buildings.some(b=>b.tribeId===t.id&&b.type===type)||S.buildQueue.some(q=>q.tribeId===t.id&&q.type===type);
-  const walls=S.buildings.filter(b=>b.tribeId===t.id&&b.type==='wall').length+S.buildQueue.filter(q=>q.tribeId===t.id&&q.type==='wall').length;
-  if(walls<8&&hasTech(t,'wall')){ const ang=walls*(Math.PI*2/8); queueBuilding(t,'wall',t.home.x+Math.cos(ang)*190,t.home.y+Math.sin(ang)*190,true); return; }
-  if(!has('tower')&&hasTech(t,'wall')){ queueBuilding(t,'tower',t.home.x+rand(-120,120),t.home.y+rand(-120,120),true); return; }
-  if(!has('barracks')&&hasTech(t,'woodsword')){ queueBuilding(t,'barracks',t.home.x+rand(-100,100),t.home.y+rand(-100,100),true); return; }
-  if(!has('workshop')&&hasTech(t,'tools')){ queueBuilding(t,'workshop',t.home.x+rand(-100,100),t.home.y+rand(-100,100),true); return; } // کارگاه: آهنگر بدون آن فقط جمع‌آوری می‌کند
-  if(!has('command')&&hasTech(t,'writing')){ queueBuilding(t,'command',t.home.x+rand(-100,100),t.home.y+rand(-100,100),true); return; }
-  if(!has('armory')&&hasTech(t,'copper')){ queueBuilding(t,'armory',t.home.x+rand(-100,100),t.home.y+rand(-100,100),true); return; }
+  const count=(type)=>S.buildings.filter(b=>b.tribeId===t.id&&b.type===type).length+S.buildQueue.filter(q=>q.tribeId===t.id&&q.type===type).length;
+  const memN=tribeMembers(t).length;
+  const logSpend=(txt)=>logEvent(t.name+' '+txt+' — انبار دارد خرج می‌شود.','good');
+  // ۱) زیرساخت پایه — هر کدام به محض اینکه منابعش هست (نه فقط وقتی انبار پر است)
+  const walls=count('wall');
+  if(walls<8&&hasTech(t,'wall')){ const b=queueBuilding(t,'wall',t.home.x+Math.cos(walls*(Math.PI*2/8))*190,t.home.y+Math.sin(walls*(Math.PI*2/8))*190,true); if(b){ logSpend('دیوار ساخت (۱۵ چوب، ۸ سنگ)'); return; } }
+  if(!has('tower')&&hasTech(t,'wall')){ const b=queueBuilding(t,'tower',t.home.x+rand(-120,120),t.home.y+rand(-120,120),true); if(b){ logSpend('برج ساخت (۲۰ چوب، ۱۵ سنگ)'); return; } }
+  if(!has('barracks')&&hasTech(t,'woodsword')){ const b=queueBuilding(t,'barracks',t.home.x+rand(-100,100),t.home.y+rand(-100,100),true); if(b){ logSpend('سربازخانه ساخت (۲۵ چوب، ۱۵ سنگ)'); return; } }
+  if(!has('workshop')&&hasTech(t,'tools')){ const b=queueBuilding(t,'workshop',t.home.x+rand(-100,100),t.home.y+rand(-100,100),true); if(b){ logSpend('کارگاه ساخت (۱۰ چوب، ۴ سنگ)'); return; } }
+  if(!has('command')&&hasTech(t,'writing')){ const b=queueBuilding(t,'command',t.home.x+rand(-100,100),t.home.y+rand(-100,100),true); if(b){ logSpend('مرکز فرماندهی ساخت (۳۰ چوب، ۲۰ سنگ)'); return; } }
+  if(!has('armory')&&hasTech(t,'copper')){ const b=queueBuilding(t,'armory',t.home.x+rand(-100,100),t.home.y+rand(-100,100),true); if(b){ logSpend('اسلحه‌خانه ساخت (۲۰ چوب، ۱۵ سنگ)'); return; } }
+  // ۲) مغازه‌های شغلی — به محض کشف فناوری‌شان
+  const shops=[['bakery','pottery'],['granary','pottery'],['smithy','copper'],['butcher','herding'],['library','writing'],['clinic','medicine'],['inn','money']];
+  for(const [type,tech] of shops){
+    if(!has(type)&&hasTech(t,tech)){ const b=queueBuilding(t,type,t.home.x+rand(-110,110),t.home.y+rand(-110,110),true); if(b){ logSpend('«'+BUILDINGS[type].name+'» ساخت ('+fa(BUILDINGS[type].wood)+' چوب، '+fa(BUILDINGS[type].stone)+' سنگ)'); return; } }
+  }
+  if(t.stock.wood>=120&&t.stock.stone>=60){
+    // ۳) ارتقای ساختمان‌ها — سینک مداوم مازاد
+    const up=S.buildings.filter(b=>b.tribeId===t.id&&b.progress>=100&&(b.level||1)<3).sort((a,b)=>(a.level||1)-(b.level||1))[0];
+    if(up){
+      const def=BUILDINGS[up.type], cw=Math.round(def.wood*0.8*(up.level||1)), cs=Math.round(def.stone*0.8*(up.level||1));
+      if(t.stock.wood>=cw&&t.stock.stone>=cs){ t.stock.wood-=cw; t.stock.stone-=cs; up.level=(up.level||1)+1; up.maxHp=buildingHP(up.type,up.level); up.hp=up.maxHp; logSpend('«'+def.name+'» را به سطح '+fa(up.level)+' ارتقا داد ('+fa(cw)+' چوب، '+fa(cs)+' سنگ)'); return; }
+    }
+    // ۴) خانه و مزرعه‌ی بیشتر با رشد جمعیت
+    const houses=count('house'), houseWant=Math.min(6,1+Math.floor(memN/12));
+    if(houses<houseWant){ queueBuilding(t,'house',t.home.x+rand(-90,90),t.home.y+rand(-90,90),true); logSpend('خانه‌ی تازه ساخت (۱۰ چوب، ۵ سنگ)'); return; }
+    const farms=count('farm'), farmWant=hasTech(t,'farming')?Math.min(6,1+Math.floor(memN/25)):0;
+    if(farms<farmWant){ queueBuilding(t,'farm',t.home.x+rand(-110,110),t.home.y+rand(-110,110),true); logSpend('مزرعه‌ی تازه ساخت (۸ چوب)'); return; }
+  }
+  // ۴) فروش مازاد به کاروان‌های عبوری — سکه می‌شود، نه انبار
+  if(t.stock.wood>220){ t.stock.wood-=20; t.stock.coins=Math.min(COIN_CAP,(t.stock.coins||0)+12); logSpend('۲۰ چوب اضافه را ۱۲ سکه فروخت'); return; }
+  if(t.stock.stone>180){ t.stock.stone-=20; t.stock.coins=Math.min(COIN_CAP,(t.stock.coins||0)+10); logSpend('۲۰ سنگ اضافه را ۱۰ سکه فروخت'); return; }
+  if(t.stock.food>foodCap(t)-20&&(t.stock.coins||0)<COIN_CAP){ t.stock.food-=15; t.stock.coins=Math.min(COIN_CAP,(t.stock.coins||0)+10); logSpend('۱۵ غذای اضافه را ۱۰ سکه فروخت'); return; }
 }
 function equipTick(){
   for(const t of S.tribes){
@@ -2631,10 +2946,12 @@ function equipTick(){
 }
 function declareWar(t1,t2,big){
   if(!t1||!t2||t1.id===t2.id) return null;
+  if(isAlly(t1,t2)){ logEvent(t1.name+' و '+t2.name+' متحدند — نمی‌توانند با هم بجنگند.','good'); return null; }
+  if(inTruce(t1,t2)){ logEvent('آتش‌بس بین '+t1.name+' و '+t2.name+' هنوز تمام نشده است.','good'); return null; }
   if(S.battles.some(b=>(b.t1===t1.id&&b.t2===t2.id)||(b.t1===t2.id&&b.t2===t1.id))) return null;
   const w1=tribeMembers(t1).filter(a=>a.job==='warrior'||a.job==='guard');
   const w2=tribeMembers(t2).filter(a=>a.job==='warrior'||a.job==='guard');
-  if(w1.length<2||w2.length<2){ logEvent('جنگ اعلام شد ولی یکی از قبایل جنگجوی کافی ندارد — فقط یورش‌های کوچک ادامه دارد.','bad'); return null; }
+  if(w1.length<1||w2.length<1){ logEvent('جنگ اعلام شد ولی یکی از قبایل جنگجوی کافی ندارد — فقط یورش‌های کوچک ادامه دارد.','bad'); return null; }
   t1.relations[t2.id]=-60; t2.relations[t1.id]=-60;
   const size=big?Math.min(12,Math.max(3,Math.min(w1.length,w2.length))):Math.min(5,Math.max(2,Math.min(w1.length,w2.length)));
   const bx=(t1.home.x+t2.home.x)/2, by=(t1.home.y+t2.home.y)/2;
@@ -2643,6 +2960,19 @@ function declareWar(t1,t2,big){
   for(const a of w2.slice(0,size)){ a.battleId=b.id; a.battleSide=2; b.s2.push(a.id); }
   S.battles.push(b);
   logEvent('جنگ '+(big?'بزرگ':'کوچک')+' بین '+t1.name+' و '+t2.name+' شروع شد — '+fa(b.s1.length)+' جنگجو در برابر '+fa(b.s2.length)+' جنگجو در میدان نبرد!','bad');
+  // پیمان دفاعی: متحدانِ مدافع ممکن است به کمک بیایند
+  for(const aid of (t2.allies||[])){
+    const ally=tribeById(aid); if(!ally||ally.id===t1.id) continue;
+    if(Math.random()<0.6){
+      const rw=tribeMembers(ally).filter(a=>a.job==='warrior'||a.job==='guard').slice(0,3);
+      for(const a of rw){ a.battleId=b.id; a.battleSide=2; b.s2.push(a.id); }
+      if(rw.length){
+        ally.relations[t1.id]=clamp((ally.relations[t1.id]||0)-30,-100,100);
+        addGrievance(ally,t1,10);
+        logEvent(ally.name+' به کمک متحدش '+t2.name+' شتافت و '+fa(rw.length)+' جنگجو فرستاد!','bad');
+      }
+    }
+  }
   return b;
 }
 function endBattle(b,winnerId){
@@ -2670,16 +3000,30 @@ function battlesTick(dt){
     if(!alive1.length){ endBattle(b,2); continue; }
     if(!alive2.length){ endBattle(b,1); continue; }
     if(b.t>120){ endBattle(b,alive1.length>=alive2.length?1:2); continue; }
+    // خستگی از جنگ: تلفات و طولانی‌شدن جنگ، هر دو طرف را به صلح می‌کشاند
+    b.peaceT=(b.peaceT||0)+dt;
+    if(b.peaceT>15){
+      b.peaceT=0;
+      const f1=(tribeById(b.t1)||{warFatigue:0}).warFatigue||0, f2=(tribeById(b.t2)||{warFatigue:0}).warFatigue||0;
+      if(((f1>45&&f2>30)||(f2>45&&f1>30)||b.t>150)&&Math.random()<0.5){
+        const t1=tribeById(b.t1), t2=tribeById(b.t2);
+        if(t1&&t2) offerPeace(t1,t2);
+        continue;
+      }
+    }
   }
-  // اعلام جنگ خودکار: رابطه‌ی خیلی بد + هر دو طرف سلاح دارند
+  // اعلام جنگ خودکار: تمایل رهبر + کینه + جنگجو — آستانه پایین‌تر، وقفه کوتاه‌تر
   for(const t of S.tribes){
     t.warCd=Math.max(0,(t.warCd||0)-dt);
     if(t.warCd>0) continue;
     const enemy=warTarget(t);
     if(!enemy) continue;
-    const w1=tribeMembers(t).filter(a=>(a.job==='warrior'||a.job==='guard')&&a.equip&&a.equip.weapon).length;
-    const w2=tribeMembers(enemy).filter(a=>(a.job==='warrior'||a.job==='guard')&&a.equip&&a.equip.weapon).length;
-    if(w1>=2&&w2>=2){ t.warCd=120; enemy.warCd=120; declareWar(t,enemy,w1>=10&&w2>=10); }
+    const app=warAppetite(t);
+    const w1=tribeMembers(t).filter(a=>a.job==='warrior'||a.job==='guard').length;
+    const w2=tribeMembers(enemy).filter(a=>a.job==='warrior'||a.job==='guard').length;
+    const armed1=tribeMembers(t).filter(a=>(a.job==='warrior'||a.job==='guard')&&a.equip&&a.equip.weapon).length;
+    const armed2=tribeMembers(enemy).filter(a=>(a.job==='warrior'||a.job==='guard')&&a.equip&&a.equip.weapon).length;
+    if(((armed1>=1&&armed2>=1)||(app>0.6&&w1>=2&&w2>=2))&&w1>=1&&w2>=1){ t.warCd=45; enemy.warCd=45; declareWar(t,enemy,app>0.7&&w1>=10&&w2>=10); }
   }
 }
 function wildTick(dt){
@@ -2764,7 +3108,7 @@ function renderCiv(){
     const m=tribeMembers(tr).length;
     return '<div class="tribe-row'+(tr.id===t.id?' sel':'')+'" data-civ="tribe:'+tr.id+'">'
       +'<span class="tribe-dot" style="background:'+tr.color+'"></span>'
-      +'<div class="tribe-info"><b>'+tr.name+'</b><small>'+AGES[tribeAge(tr)]+' • '+fa(m)+' نفر • '+icon('gene')+' '+fa(Object.keys(tr.techs).length)+' فناوری • '+icon('star')+' فرهنگ '+fa(Math.round(tr.culture))+'</small></div>'
+      +'<div class="tribe-info"><b>'+tr.name+'</b><small>'+AGES[tribeAge(tr)]+' • '+fa(m)+' نفر • '+icon('gene')+' '+fa(Object.keys(tr.techs).length)+' فناوری • '+icon('star')+' فرهنگ '+fa(Math.round(tr.culture))+((tr.allies||[]).length?' • '+icon('alliance')+' '+fa(tr.allies.length)+' متحد':'')+'</small></div>'
       +'<span class="tribe-stock">'+icon('wood')+fa(tr.stock.wood)+' '+icon('stone')+fa(tr.stock.stone)+' '+icon('food')+fa(tr.stock.food)+' '+icon('coin')+fa(tr.stock.coins)+'</span></div>';
   }).join('');
   const members=tribeMembers(t);
@@ -2793,6 +3137,10 @@ function renderCiv(){
     +'<p class="note">'+t.name+' در '+AGES[tribeAge(t)]+' است • فرهنگ '+t.cultureName+' ('+fa(Math.round(t.culture))+' امتیاز)'+(fest?' • '+icon('star')+' جشنواره در جریان است!':'')+' • مرکز قبیله روی نقشه با پرچم مشخص است.</p>'
     +'<h4>'+icon('chief')+' رهبری</h4>'
     +'<p class="note">رهبر: <b>'+(chief?chief.name:'—')+'</b> • گرایش رهبر: '+(t.stance>0.33?'جنگ‌طلب':t.stance<-0.33?'صلح‌طلب':'میانه‌رو')+' • میانگین وفاداری: ٪'+fa(Math.round(avgLoy))+' • خانواده‌ها: '+fa(fams)+'</p>'
+    +'<h4>'+icon('war')+' جنگ و دیپلماسی</h4>'
+    +'<p class="note">تمایل به جنگ: ٪'+fa(Math.round(warAppetite(t)*100))+(warAppetite(t)>0.6?' — رهبر جنگ‌طلب است و کینه‌ها را فراموش نمی‌کند':warAppetite(t)<0.35?' — رهبر صلح‌طلب است':' — رهبر میانه‌رو است')+' • خستگی از جنگ: ٪'+fa(Math.round(t.warFatigue||0))+((t.warFatigue||0)>45?' — قبیله خسته از جنگ است و به صلح تمایل دارد':'')+'</p>'
+    +'<p class="note">متحدان: '+((t.allies||[]).map(id=>{ const at=tribeById(id); return at?at.name:'؟'; }).join('، ')||'هیچ متحدی نیست — رابطه بالای ۶۰ یعنی می‌شود پیمان بست')+'</p>'
+    +'<p class="note">'+icon('scale')+' تراز نیازها در روز: غذا '+(t.needsBal.food>=0?'+':'')+fa(t.needsBal.food)+' • چوب '+(t.needsBal.wood>=0?'+':'')+fa(t.needsBal.wood)+' • سنگ '+(t.needsBal.stone>=0?'+':'')+fa(t.needsBal.stone)+(t.needsNote?' — '+t.needsNote:'')+'</p>'
     +'<h4>'+icon('armory')+' اسلحه‌خانه</h4>'
     +'<p class="note">'+armTxt+'</p>'
     +(battlesHtml?'<h4>'+icon('battle')+' نبردهای جاری</h4>'+battlesHtml:'')
@@ -2801,14 +3149,20 @@ function renderCiv(){
     +'<div class="jobs">'+JOBS.map(j=>'<div class="job-row"><span>'+icon(j.icon)+' '+j.name+'</span><b>'+fa(jobCounts[j.id]||0)+' نفر</b><span class="quota"><button class="btn btn-glass" type="button" data-civ="job:'+j.id+':-1">−</button><b>'+fa(t.jobs[j.id]||0)+'</b><button class="btn btn-glass" type="button" data-civ="job:'+j.id+':1">＋</button></span></div>').join('')+'</div>'
     +'<h4>'+icon('users')+' روابط با قبایل دیگر</h4>'
     +S.tribes.filter(o=>o.id!==t.id).map(o=>{ const r=t.relations[o.id]||0;
+      const allied=isAlly(t,o), truce=inTruce(t,o), atWar=atWarWith(t,o);
       return '<div class="rel-row"><span><span class="tribe-dot" style="background:'+o.color+'"></span>'+o.name+'</span>'
       +'<div class="bar" style="flex:1"><i style="width:'+((r+100)/2)+'%;background:'+(r<-50?'#fb7185':r>50?'#34d399':'#f59e0b')+'"></i></div>'
       +'<b>'+(r>0?'+':'')+fa(Math.round(r))+'</b>'
+      +(truce?'<span class="sub">آتش‌بس تا روز '+fa(t.truce[o.id])+'</span>':'')
+      +(allied?'<span class="sub">'+icon('alliance')+' متحد</span>':'')
       +'<button class="btn btn-danger" type="button" data-civ="rel:'+o.id+':war">'+icon('war')+' جنگ</button>'
       +'<button class="btn btn-glass" type="button" data-civ="rel:'+o.id+':peace">'+icon('peace')+' صلح</button>'
-      +'<button class="btn btn-glass" type="button" data-civ="rel:'+o.id+':gift">'+icon('gift')+' هدیه</button></div>'; }).join('')
+      +'<button class="btn btn-glass" type="button" data-civ="rel:'+o.id+':gift">'+icon('gift')+' هدیه</button>'
+      +(allied?'<button class="btn btn-glass" type="button" data-civ="rel:'+o.id+':unally">لغو اتحاد</button>':(r>60&&!atWar?'<button class="btn btn-glass" type="button" data-civ="rel:'+o.id+':ally">'+icon('alliance')+' اتحاد</button>':''))
+      +(atWar?'<button class="btn btn-glass" type="button" data-civ="rel:'+o.id+':tribute">'+icon('coin')+' باج (۱۵ سکه)</button>':'')
+      +'</div>'; }).join('')
     +'<h4>'+icon('builder')+' ساختمان‌های '+t.name+'</h4>'
-    +'<div class="build-owned">'+(S.buildings.filter(b=>b.tribeId===t.id).map(b=>'<span class="pill">'+icon(BUILDINGS[b.type].icon)+' '+BUILDINGS[b.type].name+' '+(b.progress>=100?icon('check'):'٪'+fa(Math.round(b.progress)))+'</span>').join('')||'<span style="color:var(--muted);font-size:12px">هنوز ساختمانی نیست — از پایین یکی بساز.</span>')+'</div>';
+    +'<div class="build-owned">'+(S.buildings.filter(b=>b.tribeId===t.id).map(b=>'<span class="pill">'+icon(BUILDINGS[b.type].icon)+' '+BUILDINGS[b.type].name+' '+((b.level||1)>1?'سطح '+fa(b.level)+' ':'')+(b.progress>=100?((b.hp!=null&&b.hp<b.maxHp)?'آسیب‌دیده ':'')+icon('check'):'٪'+fa(Math.round(b.progress)))+'</span>').join('')||'<span style="color:var(--muted);font-size:12px">هنوز ساختمانی نیست — از پایین یکی بساز.</span>')+'</div>';
   $('#techTree').innerHTML=TECHS.map(tc=>{
     const done=!!t.techs[tc.id];
     const avail=!done&&tc.requires.every(r=>t.techs[r]);
@@ -2852,7 +3206,10 @@ function onCivClick(b){
   else if(kind==='rel'){
     const o=tribeById(+arg); if(!o) return;
     if(arg2==='war'){ const b=declareWar(t,o,false); if(!b){ t.relations[o.id]=-60; o.relations[t.id]=-60; logEvent(t.name+' به '+o.name+' اعلام جنگ کرد!','bad'); } }
-    else if(arg2==='peace'){ t.relations[o.id]=0; o.relations[t.id]=0; for(const b of [...S.battles]){ if((b.t1===t.id&&b.t2===o.id)||(b.t1===o.id&&b.t2===t.id)){ for(const id of [...b.s1,...b.s2]){ const a=S.agents.find(x=>x.id===id); if(a){ a.battleId=null; a.battleSide=0; } } S.battles.splice(S.battles.indexOf(b),1); } } logEvent(t.name+' و '+o.name+' صلح کردند.','good'); }
+    else if(arg2==='peace'){ offerPeace(t,o); }
+    else if(arg2==='ally'){ if(tryAlly(t,o)) toast('پیمان اتحاد بسته شد!'); else toast('برای اتحاد رابطه باید بالای ۶۰ باشد و در جنگ نباشید'); }
+    else if(arg2==='unally'){ breakAlliance(t,o); }
+    else if(arg2==='tribute'){ payTribute(t,o); }
     else if(arg2==='gift'){
       if(t.stock.food>=10){ t.stock.food-=10; o.stock.food+=10;
         t.relations[o.id]=clamp((t.relations[o.id]||0)+20,-100,100); o.relations[t.id]=clamp((o.relations[t.id]||0)+20,-100,100);
@@ -3028,7 +3385,7 @@ function tick(dt){
     let ateStock=false;
     if(!busy&&!jobDone&&a.energy<40&&myTribe&&myTribe.stock.food>0){
       const dx=myTribe.centre.x-a.x,dy=myTribe.centre.y-a.y,d=Math.hypot(dx,dy);
-      if(d<34){ if((myTribe.stock.meals||0)>0){ myTribe.stock.meals-=1; a.energy=clamp(a.energy+30,0,100); a.goal='خوردن غذای پخته'; } else { myTribe.stock.food-=1; a.energy=clamp(a.energy+18,0,100); a.goal='خوردن از انبار'; } ateStock=true; }
+      if(d<34){ if((myTribe.stock.meals||0)>0){ myTribe.stock.meals-=1; a.energy=clamp(a.energy+(hasBuilding(myTribe,'bakery')?40:30),0,100); a.goal='خوردن غذای پخته'; } else { myTribe.stock.food-=1; a.energy=clamp(a.energy+18,0,100); a.goal='خوردن از انبار'; } ateStock=true; }
       else { mx=dx/d; my=dy/d; moving=true; ateStock=true; }
     }
     if(!busy&&!jobDone&&!ateStock) {
@@ -3135,6 +3492,9 @@ function draw(){
     drawBuilding(b);
     if(b.progress<100){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(b.x-16,b.y+8,32,5); ctx.fillStyle='#f59e0b'; ctx.fillRect(b.x-16,b.y+8,32*b.progress/100,5); }
     else if(b.type==='farm'){ ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(b.x-16,b.y+8,32,4); ctx.fillStyle='#4ade80'; ctx.fillRect(b.x-16,b.y+8,32*(b.growth||0)/100,4); }
+    // v4: نوار سلامت ساختمان آسیب‌دیده + حلقه‌ی طلایی ساختمان انتخاب‌شده
+    if(b.progress>=100&&b.hp!=null&&b.maxHp&&b.hp<b.maxHp){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(b.x-16,b.y+13,32,4); ctx.fillStyle='#f43f5e'; ctx.fillRect(b.x-16,b.y+13,32*clamp(b.hp/b.maxHp,0,1),4); }
+    if(S.selectedBuilding===b){ ctx.strokeStyle='#fbbf24'; ctx.lineWidth=2; ctx.setLineDash([5,4]); ctx.beginPath(); ctx.arc(b.x,b.y,26,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
   }
   // میدان‌های نبرد — حلقه‌ی قرمز ضربان‌دار + دو خط ضربدری
   for(const bt of S.battles){
@@ -3198,6 +3558,8 @@ function drawBuilding(b){
     school:['#2563eb','#1e3a8a'],university:['#7c3aed','#4c1d95'],hospital:['#f8fafc','#94a3b8'],
     market:['#f59e0b','#92400e'],workshop:['#78716c','#44403c'],tower:['#64748b','#334155'],
     barracks:['#b91c1c','#7f1d1d'],command:['#0ea5e9','#075985'],armory:['#475569','#1e293b'],
+    bakery:['#d97706','#92400e'],granary:['#eab308','#854d0e'],smithy:['#475569','#1e293b'],
+    butcher:['#991b1b','#450a0a'],library:['#4f46e5','#1e1b4b'],clinic:['#f8fafc','#94a3b8'],inn:['#0d9488','#134e4a'],
   }[b.type]||['#94a3b8','#475569'];
   ctx.fillStyle=body[0]; ctx.strokeStyle=body[1]; ctx.lineWidth=1.5;
   if(b.type==='tower'){
@@ -3217,6 +3579,13 @@ function drawBuilding(b){
     ctx.fillStyle=body[1];
     ctx.beginPath(); ctx.moveTo(x-13,y-8); ctx.lineTo(x,y-17); ctx.lineTo(x+13,y-8); ctx.closePath(); ctx.fill();
     if(b.type==='hospital'){ ctx.fillStyle='#ef4444'; ctx.fillRect(x-2,y-4,4,10); ctx.fillRect(x-5,y-1,10,4); }
+    if(b.type==='clinic'){ ctx.fillStyle='#22c55e'; ctx.fillRect(x-2,y-4,4,10); ctx.fillRect(x-5,y-1,10,4); }
+    if(b.type==='bakery'){ ctx.fillStyle='#fde68a'; ctx.beginPath(); ctx.arc(x,y+1,4,0,Math.PI*2); ctx.fill(); }
+    if(b.type==='granary'){ ctx.strokeStyle='#fde68a'; ctx.lineWidth=1.5; for(let k=-1;k<=1;k++){ ctx.beginPath(); ctx.moveTo(x+k*6,y-4); ctx.lineTo(x+k*6,y+6); ctx.stroke(); } }
+    if(b.type==='smithy'){ ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6); ctx.moveTo(x+6,y+6); ctx.lineTo(x-6,y-6); ctx.stroke(); }
+    if(b.type==='butcher'){ ctx.fillStyle='#ef4444'; ctx.fillRect(x-5,y-2,10,3); }
+    if(b.type==='library'){ ctx.fillStyle='#c7d2fe'; ctx.fillRect(x-8,y-2,5,8); ctx.fillRect(x-2,y-2,5,8); ctx.fillRect(x+4,y-2,5,8); }
+    if(b.type==='inn'){ ctx.fillStyle='#5eead4'; ctx.fillRect(x-8,y+2,16,4); ctx.fillRect(x-8,y-4,5,6); }
     if(b.type==='market'){ ctx.fillStyle='#fde68a'; ctx.fillRect(x-11,y-2,22,4); }
     if(b.type==='school'||b.type==='university'){ ctx.fillStyle='#fde047'; ctx.fillRect(x-1,y-17,2,8); ctx.beginPath(); ctx.moveTo(x+1,y-17); ctx.lineTo(x+8,y-15); ctx.lineTo(x+1,y-13); ctx.closePath(); ctx.fill(); }
     if(b.type==='armory'){ ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6); ctx.moveTo(x+6,y+6); ctx.lineTo(x-6,y-6); ctx.stroke(); }
@@ -3554,6 +3923,70 @@ function updateSelected(keep){
   renderPunnettMini();
 }
 
+/* ---------------- v4: کارت ساختمان — با کلیک روی ساختمان باز می‌شود ---------------- */
+function nearestBuilding(x,y,maxD){
+  let best=null,bd=maxD*maxD;
+  for(const b of S.buildings){ const dx=b.x-x,dy=b.y-y,d=dx*dx+dy*dy; if(d<bd){bd=d;best=b;} }
+  return best;
+}
+function selectBuilding(b){
+  S.selectedBuilding=b||null;
+  if(b) S.selected=null;
+  updateBuildingCard();
+}
+function buildingContents(b){
+  const t=tribeById(b.tribeId);
+  switch(b.type){
+    case 'farm': return 'رشد محصول: ٪'+fa(Math.round(b.growth||0))+' — هر برداشت غذا می‌دهد (با ارتقا بیشتر)';
+    case 'pasture': { const herd=S.animals.filter(x=>x.tribeId===b.tribeId); return 'حیوانات قبیله: '+fa(herd.length)+' رأس — هر ۶ ثانیه '+fa(2*herd.length)+' غذا'; }
+    case 'market': return t?('انبار قبیله: '+fa(t.stock.food)+' غذا • '+fa(t.stock.wood)+' چوب • '+fa(t.stock.coins)+' سکه'):'—';
+    case 'workshop': case 'smithy': case 'armory': {
+      const arm=t?(t.armory||{weapon:{},shield:{},armor:{}}):null;
+      if(!arm) return '—';
+      const txt=[...Object.entries(arm.weapon||{}),...Object.entries(arm.shield||{}),...Object.entries(arm.armor||{})].filter(([,n])=>n>0).map(([id,n])=>{ const w=WEAPONS[id]||SHIELDS[id]||ARMORS[id]; return w?w.name+' ×'+fa(n):''; }).join(' • ');
+      return 'ذخیره‌ی اسلحه‌خانه: '+(txt||'خالی است');
+    }
+    case 'house': {
+      const fam=b.ownerFamilyId?familyById(b.ownerFamilyId):b.renterFamilyId?familyById(b.renterFamilyId):null;
+      return fam?('خانواده‌ی '+fa(fam.members.length)+' نفره • ثروت: '+fa(Math.round(fam.wealth||0))+' سکه'+(b.renterFamilyId?' (اجاره‌ای)':'')):'خانه‌ی خالی — خانواده‌ای می‌تواند بخرد یا اجاره کند';
+    }
+    case 'granary': return 'سقف غذای قبیله +۱۵۰ تا (با ارتقا بیشتر)';
+    case 'school': case 'university': case 'library': return 'پژوهش: مدرسه ۰٫۱۵، دانشگاه ۰٫۴، کتابخانه ۰٫۳ امتیاز در ثانیه';
+    case 'hospital': case 'clinic': return 'درمان سریع؛ مرگ طاعون کمتر';
+    case 'barracks': { const w=t?tribeMembers(t).filter(a=>a.job==='warrior'||a.job==='guard').length:0; return 'جنگجو و نگهبان قبیله: '+fa(w)+' نفر — اینجا تمرین می‌کنند'; }
+    case 'command': return 'هماهنگی جنگ و وفاداری بیشتر اعضا';
+    case 'tower': return 'دفاع خانه: به مهاجمان نزدیک شلیک می‌کند';
+    case 'wall': return 'دیوار دفاعی — محاصره‌کننده اول باید آن را بشکند';
+    case 'bakery': return t?('غذای پخته در انبار: '+fa(t.stock.meals||0)+' وعده (+۴۰ انرژی)'):'—';
+    case 'butcher': return 'هر شکار +۱۰ غذای بیشتر';
+    case 'inn': return 'روسپی‌ها اینجا مشتری بیشتری دارند و دستمزد بیشتری می‌گیرند';
+    default: return BUILDINGS[b.type].desc;
+  }
+}
+function updateBuildingCard(){
+  const card=$('#buildingCard'), b=S.selectedBuilding;
+  if(!b||!S.buildings.includes(b)){ card.hidden=true; return; }
+  card.hidden=false;
+  const def=BUILDINGS[b.type], t=tribeById(b.tribeId);
+  $('#bldDot').style.background=t?t.color:'#94a3b8'; $('#bldDot').style.color=t?t.color:'#94a3b8';
+  $('#bldName').textContent=def.name+((b.level||1)>1?' — سطح '+fa(b.level):'');
+  $('#bldMeta').textContent=(t?t.name:'بی‌قبیله')+' • '+def.desc;
+  const hp=b.hp??b.maxHp, max=b.maxHp||60;
+  $('#bldHp').style.width=clamp(hp/max*100,0,100)+'%';
+  $('#bldHpTxt').textContent=fa(Math.round(hp))+' / '+fa(max);
+  const pr=$('#bldProgRow'); if(pr) pr.style.display=b.progress>=100?'none':'grid';
+  $('#bldProg').style.width=(b.progress||0)+'%';
+  $('#bldProgTxt').textContent='٪'+fa(Math.round(b.progress||0));
+  $('#bldInfo').textContent='وضعیت: '+(b.progress>=100?'ساخته شده':'در حال ساخت ('+fa(Math.round(b.progress||0))+'٪)')+' • سطح '+fa(b.level||1)+' از ۳';
+  $('#bldContent').textContent=buildingContents(b);
+  const fam=b.ownerFamilyId?familyById(b.ownerFamilyId):b.renterFamilyId?familyById(b.renterFamilyId):null;
+  $('#bldOwner').textContent=fam?('مالک: خانواده‌ی '+fa(fam.members.length)+' نفره'+(b.renterFamilyId?' (اجاره‌ای)':'')):('مالک: '+(t?t.name:'—'));
+  const rep=$('#btnBuildRepair'); if(rep) rep.disabled=!(t&&hp<max&&t.stock.wood>=5&&t.stock.stone>=3);
+  const up=$('#btnBuildUpgrade');
+  if(up){ const cw=Math.round(def.wood*0.8*(b.level||1)), cs=Math.round(def.stone*0.8*(b.level||1)); up.textContent='ارتقا به سطح '+fa((b.level||1)+1)+' ('+fa(cw)+' چوب، '+fa(cs)+' سنگ)'; up.disabled=!(t&&(b.level||1)<3&&b.progress>=100&&t.stock.wood>=cw&&t.stock.stone>=cs); }
+  const dm=$('#btnBuildDemolish'); if(dm) dm.disabled=!t&&!b.ownerFamilyId;
+}
+
 /* ---------------- جدول پانت + آزمایشگاه ژنتیک ---------------- */
 function punnettHTML(a,b){
   if(!a||!b) return '<p class="note">هنوز دو والد انتخاب نشده‌اند.</p>';
@@ -3638,8 +4071,15 @@ const GUIDE=[
  {t:'قبایل',ic:'civ',d:'جهان با هیچ قبیله‌ای شروع نمی‌شود؛ افراد قوی با رهبری بالا قبیله می‌سازند و بقیه به آن‌ها می‌پیوندند. هر قبیله انبار، فناوری و فرهنگ خودش را دارد؛ نوزاد قبیله‌ی پدر و مادرش را می‌گیرد.',ex:'مثال: در تب «تمدن» روی یک قبیله بزن تا اعضای آن روی نقشه حلقه‌دار شوند و دوربین روی مرکزشان برود. روی یک فرد بزن تا «تشکیل قبیله» یا «ترک قبیله» را ببینی.'},
  {t:'شغل‌ها',ic:'users',d:'هر موجود بالغ یک شغل دارد: جمع‌آور، چوب‌بر، معدنچی، کشاورز، سازنده، جنگجو، نگهبان، شکارچی، دانشمند، درمانگر، بازرگان، دامدار، آهنگر، آشپز یا روسپی. شغل از روی ژن‌ها و سهمیه‌ی قبیله تعیین می‌شود.',ex:'مثال: موجودی را انتخاب کن و از کارتش شغلش را عوض کن؛ یا در تب تمدن سهمیه‌ی جنگجوها را زیاد کن تا قبیله‌ات قوی‌تر شود.'},
  {t:'فناوری و عصرها',ic:'gene',d:'دانشمندان و مدرسه‌ها امتیاز پژوهش می‌سازند و قبیله فناوری‌های تازه کشف می‌کند: از آتش و ابزار سنگی تا پول و پزشکی. عصر قبیله از فناوری‌هایش مشخص می‌شود.',ex:'مثال: «کشاورزی» مزرعه را باز می‌کند، «پول» بازار را، «پزشکی» بیمارستان را. روی یک فناوری در دسترس بزن تا در اولویت پژوهش قرار گیرد.'},
- {t:'پول و تجارت',ic:'coin',d:'بعد از کشف «پول» و ساختن بازار، بازرگانان غذای اضافه را می‌فروشند و سکه می‌گیرند؛ قبایل دوست هم با هم تجارت می‌کنند و رابطه‌شان بهتر می‌شود.',ex:'مثال: به قبیله‌ای که با تو دشمن نیست «هدیه غذا» بده؛ رابطه +۲۰ می‌شود و شاید به اتحاد برسید.'},
- {t:'جنگ و صلح',ic:'war',d:'رابطه‌ی دو قبیله از ۱۰۰- تا ۱۰۰+ است. زیر ۵۰- یعنی جنگ: جنگجوها در میدانی بین دو قبیله می‌جنگند و برنده غنیمت می‌گیرد؛ یورش‌های کوچک هم غذا می‌دزدند. بالای ۵۰+ یعنی اتحاد.',ex:'مثال: از تب تمدن روی «اعلام جنگ» بزن و ببین جنگجوها چطور دسته‌ای حمله می‌کنند؛ با «صلح کن» جنگ تمام می‌شود.'},
+ {t:'پول و تجارت',ic:'coin',d:'بعد از کشف «پول» و ساختن بازار، بازرگانان غذای اضافه را می‌فروشند و سکه می‌گیرند؛ بازرگانان به بازار قبیله‌های دوست هم سفر می‌کنند و کالا را با سکه یا با کالای دیگر مبادله می‌کنند. قیمت با کمیابی بالا می‌رود و متحدان بهتر می‌خرند. وقتی انبار غذا خالی است، خانواده‌ها با ثروتشان از بازار غذا می‌خرند.',ex:'مثال: به قبیله‌ای که با تو دشمن نیست «هدیه غذا» بده؛ رابطه +۲۰ می‌شود و شاید به اتحاد برسید. بازرگان‌هایشان را در نقشه دنبال کن.'},
+ {t:'جنگ و صلح',ic:'war',d:'رابطه‌ی دو قبیله از ۱۰۰- تا ۱۰۰+ است. دوستی آهسته فراموش می‌شود، ولی کینه خیلی آهسته‌تر — دشمنی‌ها می‌مانند. زیر ۵۰- یعنی جنگ: جنگجوها در میدانی بین دو قبیله می‌جنگند و برنده غنیمت می‌گیرد؛ یورش‌های کوچک هم غذا می‌دزدند و کینه می‌سازند. تمایل رهبر به جنگ (پرخاشگری + عقیده + کینه‌ها) در تب تمدن دیده می‌شود.',ex:'مثال: از تب تمدن روی «اعلام جنگ» بزن و ببین جنگجوها چطور دسته‌ای حمله می‌کنند؛ با «صلح کن» جنگ تمام می‌شود و ۳ روز آتش‌بس برقرار است.'},
+ {t:'اتحاد قبایل',ic:'alliance',d:'وقتی رابطه‌ی دو قبیله بالای ۶۰ شد، می‌توانند پیمان اتحاد ببندند (دکمه‌ی «اتحاد» در تب تمدن، یا خود رهبرها پیشنهاد می‌دهند). متحدان هرگز به هم حمله نمی‌کنند، تجارتشان ۱۰٪ بهتر است، و اگر یکی حمله شود، دیگری جنگجو به کمک می‌فرستد.',ex:'مثال: دو قبیله‌ی دوست را پیدا کن، رابطه‌شان را با هدیه بالا ببر، بعد «اتحاد» را بزن؛ بعد به یکی‌شان اعلام جنگ کن و ببین متحدش چطور به کمک می‌آید.'},
+ {t:'محاصره و اشغال',ic:'siege',d:'در جنگ، جنگجوها فقط در میدان نمی‌جنگند؛ به خانه‌ی دشمن می‌روند و ساختمان‌هایش را می‌زنند. هر ساختمان جان (HP) دارد؛ دیوار اول می‌شکند، بعد خانه و مزرعه. خانه‌ی ویران یعنی خانواده‌ای بی‌خانه. اگر قبیله‌ای همه‌ی ساختمان‌هایش را از دست بدهد یا فقط ۲ نفر بماند، سقوط می‌کند: انبار و سرزمینش به برنده می‌رسد و بازماندگان به برنده می‌پیوندند.',ex:'مثال: روی یک ساختمان بزن تا جان و سطحش را ببینی؛ ساختمان آسیب‌دیده را می‌شود تعمیر یا ارتقا داد.'},
+ {t:'مذاکره و صلح',ic:'peace',d:'جنگ خسته‌کننده است: هر کشته خستگی قبیله را بالا می‌برد و جنگ طولانی هر دو طرف را به صلح می‌کشاند. رهبر خسته خودش پیشنهاد صلح می‌دهد؛ یا می‌شود با پرداخت باج (۱۵ سکه یا ۲۰ غذا) جنگ را تمام کرد. صلح یعنی رابطه +۱۰ و ۳ روز آتش‌بس — تا آتش‌بس تمام نشود نمی‌شود دوباره اعلام جنگ کرد.',ex:'مثال: وقتی جنگ طولانی شد، به تب تمدن نگاه کن: خستگی از جنگ بالای ۴۵ یعنی صلح نزدیک است.'},
+ {t:'ساختمان‌ها را لمس کن',ic:'home',d:'روی هر ساختمان روی نقشه بزن تا کارتش باز شود: نام، قبیله، جان (HP)، سطح، پیشرفت ساخت و محتوایش را می‌بینی — مثلاً رشد مزرعه، حیوانات مرتع، ذخیره‌ی اسلحه‌خانه یا خانواده‌ی ساکن خانه. ساختمان آسیب‌دیده را می‌شود تعمیر کرد، تا سطح ۳ ارتقا داد یا تخریب کرد (نیمی از منابع برمی‌گردد).',ex:'مثال: روی یک مزرعه بزن و رشدش را ببین؛ روی یک خانه بزن و ببین کدام خانواده در آن زندگی می‌کند.'},
+ {t:'مغازه‌های شغلی',ic:'market',d:'هر شغل یک ساختمان مخصوص دارد: نانوایی (آشپز دو برابر سریع‌تر می‌پزد)، انبار غله (سقف غذای قبیله +۱۵۰)، آهنگری (آهنگر دو برابر سریع‌تر می‌سازد)، قصابی (هر شکار +۱۰ غذا)، کتابخانه (پژوهش ۱٫۵ برابر)، درمانگاه (درمان ۱٫۵ برابر سریع‌تر) و مهمانخانه (روسپی مشتری بیشتر و دستمزد بیشتر دارد).',ex:'مثال: وقتی «سفالگری» کشف شد، نانوایی و انبار غله بساز؛ وقتی «پول» آمد، مهمانخانه بساز.'},
+ {t:'نیازها و توسعه',ic:'scale',d:'هر قبیله تراز نیازهایش را می‌سنجد: غذا، چوب و سنگ در روز چقدر کم یا زیاد می‌شوند. کمبود غذا کشاورز و مزرعه می‌آورد، کمبود چوب چوب‌بر، کمبود سنگ معدنچی؛ مازاد، کارگرها را به پژوهش و صنعت می‌برد. تراز را در تب تمدن ببین.',ex:'مثال: قبیله‌ای که غذایش منفی است، سهمیه‌ی کشاورزش خودبه‌خود بالا می‌رود؛ اگر مزرعه ندارد، مزرعه می‌سازد.'},
+ {t:'انبار و خرج کردن',ic:'trade',d:'قبیله‌ها دیگر مازاد را انبار نمی‌کنند: وقتی چوب و سنگ زیاد شد، اول زیرساخت می‌سازند، بعد ساختمان‌ها را ارتقا می‌دهند، بعد خانه و مزرعه‌ی بیشتر، و اگر باز هم اضافه ماند، مازاد را به کاروان‌های عبوری می‌فروشند و سکه می‌گیرند. همه‌ی این خرج‌ها در دفتر رویدادها ثبت می‌شود.',ex:'مثال: در دفتر رویدادها دنبال «انبار دارد خرج می‌شود» بگرد تا ببینی هر قبیله مازادش را کجا خرج کرده است.'},
  {t:'حرکت و زوم نقشه',ic:'map',d:'جهان ۱۶۰۰ در ۱۲۰۰ است و بزرگ‌تر از صفحه است: با کشیدن انگشت یا موس نقشه جابه‌جا می‌شود، با پینچ دو انگشت یا چرخ موس زوم می‌شود.',ex:'مثال: دکمه‌های ＋ و － و مرکز بالای نقشه را بزن؛ روی مینی‌مپ پایین نقشه بزن تا دوربین همان‌جا بپرد. وقتی موجودی را دنبال می‌کنی، دوربین روی او قفل می‌شود.'},
 ];
 function buildGuide(){
@@ -3691,9 +4131,13 @@ canvas.addEventListener('pointerup',e=>{
   const a=nearestAgent(w.x,w.y,30/CAM.zoom+8);
   if(a){
     if(S.pickMate){ S.mateSelected=a; S.pickMate=false; toast('والد دوم: '+a.name+' — جدول پانت را در تب ژنتیک ببین'); renderPunnettBox(); updateSelected(); return; }
-    S.selected=a; updateSelected();
+    S.selected=a; S.selectedBuilding=null; updateBuildingCard(); updateSelected();
   }
-  else { S.selected=null; S.follow=false; updateSelected(); }
+  else {
+    const b=nearestBuilding(w.x,w.y,26/CAM.zoom+10);
+    if(b){ selectBuilding(b); updateSelected(); }
+    else { S.selected=null; S.follow=false; S.selectedBuilding=null; updateBuildingCard(); updateSelected(); }
+  }
 });
 canvas.addEventListener('pointercancel',e=>{ pointers.delete(e.pointerId); if(pointers.size===0) panning=false; });
 canvas.addEventListener('wheel',e=>{ e.preventDefault(); const p=canvasPos(e); zoomAt(p.x,p.y,e.deltaY<0?1.15:1/1.15); },{passive:false});
@@ -3748,6 +4192,32 @@ $('#btnKill10').addEventListener('click',()=>{
   victims.forEach(a=>killAgent(a,'خدا')); logEvent('خدا ۱۰ موجود را کشت.','god');
 });
 $('#btnCloseSelected').addEventListener('click',()=>{S.selected=null;S.follow=false;updateSelected();});
+$('#btnCloseBuilding').addEventListener('click',()=>{S.selectedBuilding=null;updateBuildingCard();});
+$('#btnBuildRepair').addEventListener('click',()=>{
+  const b=S.selectedBuilding; if(!b) return; const t=tribeById(b.tribeId); if(!t) return;
+  if(t.stock.wood<5||t.stock.stone<3){ toast('چوب یا سنگ کافی نیست'); return; }
+  t.stock.wood-=5; t.stock.stone-=3; b.hp=Math.min(b.maxHp,(b.hp??b.maxHp)+Math.round(b.maxHp*0.6));
+  logEvent('«'+BUILDINGS[b.type].name+'» در '+t.name+' تعمیر شد.','good'); updateBuildingCard();
+});
+$('#btnBuildUpgrade').addEventListener('click',()=>{
+  const b=S.selectedBuilding; if(!b) return; const t=tribeById(b.tribeId); if(!t) return;
+  const def=BUILDINGS[b.type], cw=Math.round(def.wood*0.8*(b.level||1)), cs=Math.round(def.stone*0.8*(b.level||1));
+  if((b.level||1)>=3||b.progress<100){ toast('دیگر قابل ارتقا نیست'); return; }
+  if(t.stock.wood<cw||t.stock.stone<cs){ toast('منابع کافی نیست'); return; }
+  t.stock.wood-=cw; t.stock.stone-=cs; b.level=(b.level||1)+1; b.maxHp=buildingHP(b.type,b.level); b.hp=b.maxHp;
+  logEvent('«'+def.name+'» در '+t.name+' به سطح '+fa(b.level)+' ارتقا یافت!','good'); updateBuildingCard();
+});
+$('#btnBuildDemolish').addEventListener('click',()=>{
+  const b=S.selectedBuilding; if(!b) return; const t=tribeById(b.tribeId);
+  const def=BUILDINGS[b.type];
+  if(t){ t.stock.wood+=Math.round(def.wood/2); t.stock.stone+=Math.round(def.stone/2); }
+  const bi=S.buildings.indexOf(b); if(bi>=0) S.buildings.splice(bi,1);
+  const qi=S.buildQueue.findIndex(q=>q.buildingId===b.id); if(qi>=0) S.buildQueue.splice(qi,1);
+  if(b.ownerFamilyId){ const fam=familyById(b.ownerFamilyId); if(fam){ fam.houseId=null; fam.houselessSince=S.elapsed; } }
+  if(b.renterFamilyId){ const fam=familyById(b.renterFamilyId); if(fam) fam.renterFamilyId=null; }
+  S.selectedBuilding=null; updateBuildingCard();
+  logEvent('«'+def.name+'» در '+(t?t.name:'جهان')+' تخریب شد — نیمی از منابع برگشت.','bad');
+});
 $('#btnFollow').addEventListener('click',()=>{ S.follow=!S.follow; updateSelected(); toast(S.follow?'دنبال می‌کنم':'دنبال‌کردن لغو شد'); });
 $('#btnFoundTribe').addEventListener('click',()=>{
   const a=S.selected; if(!a||a.tribeId) return;
@@ -3834,8 +4304,22 @@ function migrateV3(){
   for(const an of S.animals){ if(an.wild===undefined) an.wild=(an.kind==='wolf'||an.kind==='bear'); if(an.atkCd===undefined) an.atkCd=0; }
   logEvent('ذخیره‌ی قدیمی (v3) به نسخه‌ی تازه (v4) تبدیل شد: رهبر قبایل و خانواده‌ها ساخته شدند.','god');
 }
+function migrateV4(){
+  // ذخیره‌ی v4 به v5: فیلدهای دیپلماسی و جان/سطح ساختمان‌ها
+  for(const t of S.tribes){
+    if(!t.allies) t.allies=[]; if(!t.grievance) t.grievance={}; if(!t.truce) t.truce={};
+    if(t.warFatigue===undefined) t.warFatigue=0;
+    if(!t.needsBal) t.needsBal={food:0,wood:0,stone:0};
+    if(t.diplomacyT===undefined) t.diplomacyT=rand(0,10); if(t.needsT===undefined) t.needsT=0;
+  }
+  for(const b of S.buildings){
+    if(b.hp===undefined){ b.maxHp=BUILDING_HP[b.type]||60; b.hp=b.maxHp; }
+    if(b.level===undefined) b.level=1;
+  }
+  logEvent('ذخیره‌ی قدیمی (v4) به نسخه‌ی تازه (v5) تبدیل شد: اتحادها، آتش‌بس و جان ساختمان‌ها اضافه شد.','god');
+}
 $('#btnSave').addEventListener('click',()=>{
-  const data={v:4,settings:S.settings,day:S.day,timeOfDay:S.timeOfDay,births:S.births,deaths:S.deaths,fights:S.fights,
+  const data={v:5,settings:S.settings,day:S.day,timeOfDay:S.timeOfDay,births:S.births,deaths:S.deaths,fights:S.fights,
     deathsBy:S.deathsBy,nextId:S.nextId,nextLineage:S.nextLineage,mutations:S.mutations,genetics:S.genetics,
     geneRules:GEN_RULES,alleleGene:S.alleleGene,
     tribes:S.tribes,buildings:S.buildings,buildQueue:S.buildQueue,trees:S.trees,stones:S.stones,animals:S.animals,
@@ -3859,6 +4343,13 @@ $('#btnLoad').addEventListener('click',()=>{
       S.nextBuildId=d.nextBuildId||1; S.selTribe=d.selTribe||0;
       S.families=d.families||[]; S.nextFamilyId=d.nextFamilyId||1; S.nextTribeId=d.nextTribeId||1; S.nextBattleId=d.nextBattleId||1;
       S.battles=(d.battles||[]).map(b=>({...b,s1:b.s1||[],s2:b.s2||[]}));
+      migrateV4();
+    }
+    else if(d.v===5&&d.tribes){
+      S.tribes=d.tribes; S.buildings=d.buildings||[]; S.buildQueue=d.buildQueue||[]; S.trees=d.trees||[]; S.stones=d.stones||[]; S.animals=d.animals||[];
+      S.nextBuildId=d.nextBuildId||1; S.selTribe=d.selTribe||0;
+      S.families=d.families||[]; S.nextFamilyId=d.nextFamilyId||1; S.nextTribeId=d.nextTribeId||1; S.nextBattleId=d.nextBattleId||1;
+      S.battles=(d.battles||[]).map(b=>({...b,s1:b.s1||[],s2:b.s2||[]}));
     }
     else if(d.v===3&&d.tribes){
       S.tribes=d.tribes; S.buildings=d.buildings||[]; S.buildQueue=d.buildQueue||[]; S.trees=d.trees||[]; S.stones=d.stones||[]; S.animals=d.animals||[];
@@ -3867,8 +4358,10 @@ $('#btnLoad').addEventListener('click',()=>{
     }
     else { createTribes(); spawnResources(); }
     // سازگاری با ذخیره‌های قدیمی: خانه‌ی ثابت و زمان ساخت ساختمان‌ها
-    for(const t of S.tribes){ if(!t.home) t.home={x:t.centre.x,y:t.centre.y}; if(!t.centre) t.centre={x:t.home.x,y:t.home.y}; if(t.relocT===undefined) t.relocT=rand(0,20); if(t.plantCd===undefined) t.plantCd=0; if(!t.stock.meals) t.stock.meals=0; if(!t.armory) t.armory={weapon:{},shield:{},armor:{}}; if(!t.relations) t.relations={}; }
-    for(const b of S.buildings){ if(b.createdAt===undefined) b.createdAt=S.elapsed; if(b.ownerFamilyId===undefined) b.ownerFamilyId=null; if(b.renterFamilyId===undefined) b.renterFamilyId=null; }
+    for(const t of S.tribes){ if(!t.home) t.home={x:t.centre.x,y:t.centre.y}; if(!t.centre) t.centre={x:t.home.x,y:t.home.y}; if(t.relocT===undefined) t.relocT=rand(0,20); if(t.plantCd===undefined) t.plantCd=0; if(!t.stock.meals) t.stock.meals=0; if(!t.armory) t.armory={weapon:{},shield:{},armor:{}}; if(!t.relations) t.relations={};
+      /* v4: فیلدهای دیپلماسی و نیازها */
+      if(!t.allies) t.allies=[]; if(!t.grievance) t.grievance={}; if(!t.truce) t.truce={}; if(t.warFatigue===undefined) t.warFatigue=0; if(!t.needsBal) t.needsBal={food:0,wood:0,stone:0}; if(t.diplomacyT===undefined) t.diplomacyT=rand(0,10); if(t.needsT===undefined) t.needsT=0; }
+    for(const b of S.buildings){ if(b.createdAt===undefined) b.createdAt=S.elapsed; if(b.ownerFamilyId===undefined) b.ownerFamilyId=null; if(b.renterFamilyId===undefined) b.renterFamilyId=null; if(b.hp===undefined){ b.maxHp=BUILDING_HP[b.type]||60; b.hp=b.maxHp; } if(b.level===undefined) b.level=1; }
     if(!S.settings.fertility) S.settings.fertility=1;
     if(d.geneRules) GEN_RULES=d.geneRules;
     if(d.genetics) Object.assign(S.genetics,d.genetics);
@@ -3890,7 +4383,7 @@ $('#btnLoad').addEventListener('click',()=>{
       for(const id of b.s1){ const a=S.agents.find(x=>x.id===id); if(a){ a.battleId=b.id; a.battleSide=1; } }
       for(const id of b.s2){ const a=S.agents.find(x=>x.id===id); if(a){ a.battleId=b.id; a.battleSide=2; } }
     }
-    if(d.v!==3&&d.v!==4){ for(const ag of S.agents){ ag.tribeId=ag.lineage%S.tribes.length; } for(const t of S.tribes) assignJobs(t); }
+    if(d.v!==3&&d.v!==4&&d.v!==5){ for(const ag of S.agents){ ag.tribeId=ag.lineage%S.tribes.length; } for(const t of S.tribes) assignJobs(t); }
     for(let i=0;i<70;i++) spawnFood();
     buildSliders(); buildGeneRules(); buildAlleleSelect();
     $('#matePref').value=S.genetics.matePref; $('#matePrefStrength').value=S.genetics.matePrefStrength;
@@ -3933,7 +4426,7 @@ function loop(now){
   if(S.follow&&S.selected&&!S.selected.dead){ CAM.x=S.selected.x-VW/CAM.zoom/2; CAM.y=S.selected.y-VH/CAM.zoom/2; clampCam(); }
   draw();
   statAcc+=rawDt;
-  if(statAcc>0.25){ statAcc=0; updateStats(); }
+  if(statAcc>0.25){ statAcc=0; updateStats(); if(S.selectedBuilding) updateBuildingCard(); }
   chartAcc+=rawDt;
   if(chartAcc>1){ chartAcc=0; drawLineChart($('#chartPop'),S.historyPop,'جمعیت: '+fa(S.agents.length),'#34d399'); drawTraitChart(); drawAlleleChart(); }
   requestAnimationFrame(loop);
