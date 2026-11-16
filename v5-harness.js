@@ -317,19 +317,19 @@ console.log('\n--- K. distance -> war appetite ---');
   // strip both tribes' buildings first: recomputeTerritory re-claims from buildings too, so a teleported home
   // would otherwise keep its old building tiles and the far case would stay "close"
   ev(ctx, `(()=>{for(const b of S.buildings){ if(b.tribeId===${a}||b.tribeId===${b}) b.tribeId=null; } })()`);
-  // homes 550px apart: each territory reaches 150px from its home, so nearest owned tile centres are 250px
+  // v7: homes 850px apart: each founding blob reaches 300px from its home, so nearest owned tile centres are 250px
   // apart and the edge-to-edge territory distance is 200px -> distBonus 0.2
-  ev(ctx, `(()=>{const t1=tribeById(${a}), t2=tribeById(${b}); t1.home={x:600,y:900}; t1.centre={x:600,y:900}; t2.home={x:1150,y:900}; t2.centre={x:1150,y:900}; recomputeTerritory(t1); recomputeTerritory(t2); updateTerritoryDistances(); })()`);
+  ev(ctx, `(()=>{const t1=tribeById(${a}), t2=tribeById(${b}); t1.home={x:600,y:900}; t1.centre={x:600,y:900}; t2.home={x:1450,y:900}; t2.centre={x:1450,y:900}; recomputeTerritory(t1); recomputeTerritory(t2); updateTerritoryDistances(); })()`);
   const appClose = ev(ctx, `warAppetite(tribeById(${a}))`);
-  ev(ctx, `(()=>{const t2=tribeById(${b}); t2.home={x:2100,y:900}; t2.centre={x:2100,y:900}; recomputeTerritory(t2); updateTerritoryDistances(); })()`);
+  ev(ctx, `(()=>{const t2=tribeById(${b}); t2.home={x:2250,y:900}; t2.centre={x:2250,y:900}; recomputeTerritory(t2); updateTerritoryDistances(); })()`);
   const appFar = ev(ctx, `warAppetite(tribeById(${a}))`);
-  console.log('  appetite close (territories 200px apart):', appClose.toFixed(3), '| far (1500px):', appFar.toFixed(3));
+  console.log('  appetite close (territories 200px apart):', appClose.toFixed(3), '| far (1650px):', appFar.toFixed(3));
   check('close rivals are more war-hungry than far ones (gap >= 0.15)', appClose - appFar >= 0.15);
-  ev(ctx, `(()=>{const t2=tribeById(${b}); t2.home={x:1150,y:900}; t2.centre={x:1150,y:900}; recomputeTerritory(t2); updateTerritoryDistances(); })()`);
+  ev(ctx, `(()=>{const t2=tribeById(${b}); t2.home={x:1450,y:900}; t2.centre={x:1450,y:900}; recomputeTerritory(t2); updateTerritoryDistances(); })()`);
   const bonusClose = ev(ctx, `distBonus(tribeById(${a}))`);
   console.log('  distBonus at 200px:', bonusClose);
   check('distBonus is 0.2 at 200px', Math.abs(bonusClose - 0.2) < 0.001);
-  ev(ctx, `(()=>{const t2=tribeById(${b}); t2.home={x:2100,y:900}; t2.centre={x:2100,y:900}; recomputeTerritory(t2); updateTerritoryDistances(); })()`);
+  ev(ctx, `(()=>{const t2=tribeById(${b}); t2.home={x:2250,y:900}; t2.centre={x:2250,y:900}; recomputeTerritory(t2); updateTerritoryDistances(); })()`);
   check('distBonus is 0 beyond 1000px', ev(ctx, `distBonus(tribeById(${a}))`) === 0);
 }
 
@@ -340,17 +340,21 @@ console.log('\n--- L. land ownership (tiles) ---');
   const ids = ensureTribes(ctx, 2);
   const [a, b] = ids;
   const t0 = ev(ctx, `tribeTiles(tribeById(${a}))`);
-  console.log('  tiles at founding (home radius 3):', t0);
-  check('a new tribe owns tiles around its home', t0 >= 20 && t0 <= 60);
-  // a completed building claims its tiles — place it OUTSIDE the current territory (300px from home),
-  // otherwise the claim lands on tiles the tribe already owns and adds nothing
+  console.log('  tiles of the new tribe (founding blob ~100 + expansion since formation):', t0);
+  // the exact blob size at formation is asserted in the v7 harness (T2: 100 tiles right after foundTribe);
+  // here the tribe has already expanded since forming, so only the lower bound is meaningful
+  check('a new tribe owns a large founding blob around its home (100 at formation, more as it expands)', t0 >= 60);
+  // a completed building claims its tiles — place it OUTSIDE the current territory (500px from home;
+  // the v7 founding blob reaches 300px), otherwise the claim lands on tiles the tribe already owns
   const before = ev(ctx, `tribeTiles(tribeById(${a}))`);
-  ev(ctx, `(()=>{const t=tribeById(${a}); const b=newBuilding(${a},'tower',t.home.x+300,t.home.y,null); b.progress=100; S.buildings.push(b); claimForBuilding(b); })()`);
+  ev(ctx, `(()=>{const t=tribeById(${a}); const b=newBuilding(${a},'tower',t.home.x+500,t.home.y,null); b.progress=100; S.buildings.push(b); claimForBuilding(b); })()`);
   const afterTower = ev(ctx, `tribeTiles(tribeById(${a}))`);
   console.log('  tiles after a tower completes:', before, '->', afterTower);
   check('a tower claims surrounding tiles', afterTower > before);
-  // a castle claims a much larger area
-  ev(ctx, `(()=>{const t=tribeById(${a}); const b=newBuilding(${a},'castle',t.home.x-300,t.home.y,null); b.progress=100; S.buildings.push(b); claimForBuilding(b); })()`);
+  // a castle claims a much larger area — placed 600px away (opposite the nearest edge) so its tiles
+  // form a disconnected exclave; destroying it must unclaim exactly those tiles (v7 recompute keeps
+  // land that stays connected to the home blob, and drops land cut off from it)
+  ev(ctx, `(()=>{const t=tribeById(${a}); const dir=t.home.x>1200?-1:1; const b=newBuilding(${a},'castle',t.home.x+dir*600,t.home.y,null); b.progress=100; S.buildings.push(b); claimForBuilding(b); })()`);
   const afterCastle = ev(ctx, `tribeTiles(tribeById(${a}))`);
   console.log('  tiles after a castle completes:', afterTower, '->', afterCastle);
   check('a castle claims a large area (radius 4)', afterCastle - afterTower >= 20);
@@ -651,9 +655,11 @@ console.log('\n--- V. land hunger ---');
   const { ctx } = makeCtx(12345);
   runDays(ctx, 1);
   const tiles1 = ev(ctx, `S.tribes.reduce((s,t)=>s+tribeTiles(t),0)`);
-  runDays(ctx, 9);
+  runDays(ctx, 2);
+  const tiles3 = ev(ctx, `S.tribes.reduce((s,t)=>s+tribeTiles(t),0)`);
+  runDays(ctx, 7);
   const tiles10 = ev(ctx, `S.tribes.reduce((s,t)=>s+tribeTiles(t),0)`);
-  console.log('  total owned tiles day1:', tiles1, 'day10:', tiles10);
+  console.log('  total owned tiles day1:', tiles1, 'day3:', tiles3, 'day10:', tiles10, '| unclaimed day3:', 1728-tiles3, 'day10:', 1728-tiles10, '| tribes:', ev(ctx, `S.tribes.length`));
   check('owned tiles per tribe GROW over a 10-day run', tiles10 > tiles1 && tiles10 > 100);
   check('v25 baseline had no territory system at all', !fs.readFileSync('/home/hatch/workspace/god-sim/app-v25.js', 'utf8').includes('S.tiles'));
 
@@ -661,10 +667,11 @@ console.log('\n--- V. land hunger ---');
   const { ctx: c2 } = makeCtx(777);
   ensureTribes(c2, 1);
   const t2 = ev(c2, `S.tribes[0].id`);
+  const tilesBefore2 = ev(c2, `tribeTiles(tribeById(${t2}))`);
   ev(c2, `(()=>{const t=tribeById(${t2}); t.stock.wood=0; t.stock.stone=0; t.stock.food=500; const b=tribeMembers(t).find(a=>a.age>=0.4); b.job='builder'; b.x=t.home.x; b.y=t.home.y; for(let i=0;i<200;i++){ claimStep(b,t,1,30); } })()`);
   const tilesAfter2 = ev(c2, `tribeTiles(tribeById(${t2}))`);
-  console.log('  no-resources tribe tiles after 200 claim attempts:', tilesAfter2);
-  check('a tribe with no resources does not expand (claim cost gates it)', tilesAfter2 <= 40);
+  console.log('  no-wood tribe tiles before/after 200 claim attempts:', tilesBefore2, '->', tilesAfter2);
+  check('a tribe with no wood cannot claim new tiles (expansion costs wood; the founding blob is free)', tilesAfter2 <= tilesBefore2);
 
   // V3: with surplus wood + an idle builder, tiles grow (claimStep works)
   const { ctx: c3 } = makeCtx(778);
@@ -680,9 +687,14 @@ console.log('\n--- V. land hunger ---');
   const { ctx: c4 } = makeCtx(779);
   ensureTribes(c4, 2);
   ev(c4, `(()=>{ const a=S.tribes[0], b=S.tribes[1];
-    const dx=350, dy=0;
-    b.home.x=a.home.x+dx; b.home.y=a.home.y+dy; b.centre={x:b.home.x,y:b.home.y};
-    for(const bl of S.buildings) if(bl.tribeId===b.id){ bl.x+=dx; bl.y+=dy; }
+    // v7: start from an empty map (like K/X1) — with big blobs + fast expansion, teleporting a home
+    // into another tribe's land would leave it landless (the founding blob never steals)
+    S.tribes=S.tribes.filter(t=>t.id===a.id||t.id===b.id);
+    for(let i=0;i<S.tiles.length;i++) S.tiles[i]=0; S.tileCounts={};
+    const dax=600-a.home.x, day=900-a.home.y, dbx=950-b.home.x, dby=900-b.home.y;
+    for(const bl of S.buildings){ if(bl.tribeId===a.id){ bl.x+=dax; bl.y+=day; } if(bl.tribeId===b.id){ bl.x+=dbx; bl.y+=dby; } }
+    a.home={x:600,y:900}; a.centre={x:600,y:900};
+    b.home={x:950,y:900}; b.centre={x:950,y:900};
     recomputeTerritory(a); recomputeTerritory(b); updateTerritoryDistances();
     a.relations[b.id]=0; b.relations[a.id]=0; })()`);
   const dist4 = ev(c4, `territoryDist(S.tribes[0],S.tribes[1])`);
@@ -691,9 +703,9 @@ console.log('\n--- V. land hunger ---');
   console.log('  territory distance:', Math.round(dist4), 'border tension after 60s:', ten4.toFixed(1));
   check('two tribes whose borders meet show rising border tension', ten4 > 20);
   const grBefore = ev(c4, `(S.tribes[0].grievance||{})[S.tribes[1].id]||0`);
-  ev(c4, `(()=>{ const a=S.tribes[0], b=S.tribes[1]; a.borderTension[b.id]=60; a.landGrudgeT[b.id]=59; borderTensionTick(5); })()`);
+  ev(c4, `(()=>{ const a=S.tribes[0], b=S.tribes[1]; a.borderTension[b.id]=60; a.landGrudgeT[b.id]=119; borderTensionTick(5); })()`); // v7: threshold is 2 days (2x dayLength=120s)
   const grAfter = ev(c4, `(S.tribes[0].grievance||{})[S.tribes[1].id]||0`);
-  check('sustained border tension adds a land grievance (+2 per day of tension)', grAfter >= grBefore + 2);
+  check('sustained border tension adds a land grievance (+2 per 2 days of tension)', grAfter >= grBefore + 2);
   const panelShows = ev(c4, `(()=>{ try{ renderCiv(); return document.getElementById('tribeDetail').innerHTML.includes('تنش مرزی'); }catch(e){ return 'ERR:'+e.message; } })()`);
   check('the tribe panel shows the per-border tension value', panelShows === true);
 
@@ -701,8 +713,13 @@ console.log('\n--- V. land hunger ---');
   const { ctx: c5 } = makeCtx(780);
   ensureTribes(c5, 2);
   ev(c5, `(()=>{ const a=S.tribes[0], b=S.tribes[1];
-    b.home.x=a.home.x+400; b.home.y=a.home.y; b.centre={x:b.home.x,y:b.home.y};
-    for(const bl of S.buildings) if(bl.tribeId===b.id){ bl.x+=400; }
+    // v7: start from an empty map (like V4) — teleporting into expanded territory would leave a tribe landless
+    S.tribes=S.tribes.filter(t=>t.id===a.id||t.id===b.id);
+    for(let i=0;i<S.tiles.length;i++) S.tiles[i]=0; S.tileCounts={};
+    const dax=600-a.home.x, day=900-a.home.y, dbx=1000-b.home.x, dby=900-b.home.y;
+    for(const bl of S.buildings){ if(bl.tribeId===a.id){ bl.x+=dax; bl.y+=day; } if(bl.tribeId===b.id){ bl.x+=dbx; bl.y+=dby; } }
+    a.home={x:600,y:900}; a.centre={x:600,y:900};
+    b.home={x:1000,y:900}; b.centre={x:1000,y:900};
     recomputeTerritory(a); recomputeTerritory(b); updateTerritoryDistances();
     a.relations[b.id]=-60; b.relations[a.id]=-60; })()`);
   setWarriors(c5, ev(c5, `S.tribes[0].id`), 3);
@@ -729,7 +746,7 @@ console.log('\n--- V. land hunger ---');
   const costNear = ev(c5, `claimCostAt(S.tribes[0],S.tribes[0].home.x+50,S.tribes[0].home.y)`);
   const costFar = ev(c5, `claimCostAt(S.tribes[0],S.tribes[0].home.x+700,S.tribes[0].home.y)`);
   console.log('  territory cap:', cap6, '| claim cost near home:', JSON.stringify(costNear), 'far:', JSON.stringify(costFar));
-  check('territory has a cap (population + towers), not infinite growth', cap6 > 0 && cap6 < 500);
+  check('territory has a large cap (population + towers) that never blocks filling the map with 4-6 tribes', cap6 >= 400 && cap6 < 2000);
   check('claiming far from home costs more than claiming near home', (costFar.wood + costFar.stone) > (costNear.wood + costNear.stone));
 }
 
@@ -805,8 +822,15 @@ console.log('\n--- X. inter-tribe roads ---');
   const { ctx } = makeCtx(901);
   ensureTribes(ctx, 2);
   ev(ctx, `(()=>{ const a=S.tribes[0], b=S.tribes[1];
-    b.home.x=a.home.x+500; b.home.y=a.home.y; b.centre={x:b.home.x,y:b.home.y};
-    for(const bl of S.buildings) if(bl.tribeId===b.id){ bl.x+=500; }
+    // v7: keep only the two tribes under test and start from an empty map (like K) — with big
+    // founding blobs, teleporting a home into another tribe's land would leave it nearly landless
+    S.tribes=S.tribes.filter(t=>t.id===a.id||t.id===b.id);
+    for(let i=0;i<S.tiles.length;i++) S.tiles[i]=0; S.tileCounts={};
+    // v7: homes 900px apart at fixed spots — the 300px founding blobs leave a 300px unclaimed gap for the road
+    const dax=600-a.home.x, day=900-a.home.y, dbx=1500-b.home.x, dby=900-b.home.y;
+    for(const bl of S.buildings){ if(bl.tribeId===a.id){ bl.x+=dax; bl.y+=day; } if(bl.tribeId===b.id){ bl.x+=dbx; bl.y+=dby; } }
+    a.home={x:600,y:900}; a.centre={x:600,y:900};
+    b.home={x:1500,y:900}; b.centre={x:1500,y:900};
     recomputeTerritory(a); recomputeTerritory(b); updateTerritoryDistances();
     a.relations[b.id]=50; b.relations[a.id]=50;
     a.stock.wood=500; b.stock.wood=500; a.stock.stone=500; b.stock.stone=500; })()`);
