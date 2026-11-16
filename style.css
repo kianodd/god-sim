@@ -319,11 +319,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   .selected{max-height:62dvh;overflow-y:auto;top:48px}
 }
 @media (max-width:640px){
-  /* کمتر شلوغی روی گوشی: برچسب چیپ‌ها و راهنمای پایین پنهان می‌شوند */
-  .chip-label{display:none}
+  /* روی گوشی برچسب چیپ‌ها می‌ماند (به خواست کاربر: آیکون + متن)؛ فقط راهنمای پایین پنهان می‌شود */
   .hint{display:none}
   .chips{gap:6px}
   .chip{padding:6px 8px}
+  .chip-label{font-size:11px}
   .bar-row{grid-template-columns:56px 1fr 40px}
   .sel-actions .btn{min-height:44px}
   .tabs{gap:4px}
