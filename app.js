@@ -43,6 +43,8 @@ tower:'<path d="M9 21V9l-2-4h10l-2 4v12"/><path d="M7 21h10M12 12v3"/>',
 barracks:'<path d="M12 3L2 20h20z"/><path d="M9 20v-5h6v5"/>',
 castle:'<path d="M4 21V8l-1-3h4l1 3h8l1-3h4l-1 3v13"/><path d="M3 21h18M10 21v-6h4v6"/>',
 crown:'<path d="M3 19h18v2.5H3z"/><path d="M4 18L2.5 7l5.5 4L12 4l4 7 5.5-4L20 18z"/><circle cx="12" cy="14" r="1.2" fill="#ef4444" stroke="none"/>',
+cube:'<path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 12l9-5M12 12L3 7M12 12v10"/>',
+grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
 tent:'<path d="M12 4L2 20h20z"/><path d="M12 12v8"/>',
 command:'<path d="M12 2l2.5 6.5L21 9l-5 4.5L17.5 20 12 16.5 6.5 20 8 13.5 3 9l6.5-.5z"/>',
 armory:'<path d="M6 3l12 12M18 3L6 15"/><path d="M4 20l4-1-1-4zM20 20l-4-1 1-4z"/>',
@@ -1609,6 +1611,7 @@ const SEASONS=[['بهار',0],['تابستان',91],['پاییز',182],['زمس�
 /* ---------------- وضعیت ---------------- */
 const S={
   running:true, speed:1, day:1, timeOfDay:8, // ساعت ۰ تا ۲۴
+  view:'iso', // v27: نمای فعال — 'iso' (ایزومتریک سه‌بعدی) یا '2d' (دوبعدی)؛ ترجیح در localStorage
   agents:[], foods:[], parts:[], floaters:[], corpses:[],
   nextId:1, nextLineage:1, births:0, deaths:0, fights:0,
   deathsBy:{'گرسنگی':0,'پیری':0,'جنگ':0,'طاعون':0,'صاعقه':0,'شهاب':0,'خدا':0},
@@ -1629,6 +1632,7 @@ let W=WORLD_W,H=WORLD_H,DPR=1, foodAcc=0, statAcc=0, chartAcc=0;
 let VW=800, VH=600;
 const CAM={x:0,y:0,zoom:1,fitted:false};
 const canvas=$('#world'), ctx=canvas.getContext('2d');
+const canvas3d=$('#world3d'); // v27: بوم نمای ایزومتریک (Three.js) — جدا از بوم دوبعدی، چون یک بوم نمی‌تواند هم 2d باشد هم WebGL
 
 /* ---------------- کش اسپرایت (پرفورمنس) ----------------
    ظاهر هر موجود (هاله + بدن + چشم‌ها) یک بار در یک بوم آفسکرین رندر می‌شود
@@ -3788,6 +3792,17 @@ function assignTribelessJobs(){
 /* دوربین */
 function screenToWorld(sx,sy){ return {x:CAM.x+sx/CAM.zoom, y:CAM.y+sy/CAM.zoom}; }
 function worldToScreen(wx,wy){ return {x:(wx-CAM.x)*CAM.zoom, y:(wy-CAM.y)*CAM.zoom}; }
+/* v27: رندر ایزومتریک — false یعنی دوبعدی کشیده شود */
+function isoDraw(){
+  try{
+    if(typeof Iso3D==='undefined'||!Iso3D.init()) return false;
+    return !!Iso3D.render();
+  }catch(e){ return false; }
+}
+function isoPick(sx,sy){ // v27: در نمای ایزومتریک، نقطه‌ی صفحه را با ری‌کست به مختصات جهان تبدیل کن
+  if(S.view!=='iso'||typeof Iso3D==='undefined') return null;
+  try{ return Iso3D.screenToWorld(sx,sy); }catch(e){ return null; }
+}
 function clampCam(){
   const vw=VW/CAM.zoom, vh=VH/CAM.zoom;
   CAM.x = vw>=WORLD_W ? (WORLD_W-vw)/2 : clamp(CAM.x,-40,WORLD_W-vw+40);
@@ -4218,6 +4233,11 @@ function drawCrown(x,y,s){
   ctx.restore();
 }
 function draw(){
+  // v27: نمای ایزومتریک سه‌بعدی — اگر در دسترس/سالم نباشد، خودکار به دوبعدی برمی‌گردیم
+  if(S.view==='iso'){
+    if(isoDraw()){ drawMinimap(); return; }
+    S.view='2d'; applyView();
+  }
   // آسمان / زمین — همیشه روز (افکت تاریکی شب حذف شده؛ شب/روز فقط در ساعت و دما معلوم است)
   ctx.fillStyle=skyGrad(); ctx.fillRect(0,0,VW,VH);
   ctx.save();
@@ -4913,6 +4933,7 @@ const GUIDE=[
  {t:'نیازها و توسعه',ic:'scale',d:'هر قبیله تراز نیازهایش را می‌سنجد: غذا، چوب و سنگ در روز چقدر کم یا زیاد می‌شوند. کمبود غذا کشاورز و مزرعه می‌آورد، کمبود چوب چوب‌بر، کمبود سنگ معدنچی؛ مازاد، کارگرها را به پژوهش و صنعت می‌برد. تراز را در تب تمدن ببین.',ex:'مثال: قبیله‌ای که غذایش منفی است، سهمیه‌ی کشاورزش خودبه‌خود بالا می‌رود؛ اگر مزرعه ندارد، مزرعه می‌سازد.'},
  {t:'انبار و خرج کردن',ic:'trade',d:'قبیله‌ها دیگر مازاد را انبار نمی‌کنند: وقتی چوب و سنگ زیاد شد، اول زیرساخت می‌سازند، بعد ساختمان‌ها را ارتقا می‌دهند، بعد خانه و مزرعه‌ی بیشتر، و اگر باز هم اضافه ماند، مازاد را به کاروان‌های عبوری می‌فروشند و سکه می‌گیرند. همه‌ی این خرج‌ها در دفتر رویدادها ثبت می‌شود.',ex:'مثال: در دفتر رویدادها دنبال «انبار دارد خرج می‌شود» بگرد تا ببینی هر قبیله مازادش را کجا خرج کرده است.'},
  {t:'حرکت و زوم نقشه',ic:'map',d:'جهان ۲۴۰۰ در ۱۸۰۰ است و بزرگ‌تر از صفحه است: با کشیدن انگشت یا موس نقشه جابه‌جا می‌شود، با پینچ دو انگشت یا چرخ موس زوم می‌شود.',ex:'مثال: دکمه‌های ＋ و － و مرکز بالای نقشه را بزن؛ روی مینی‌مپ پایین نقشه بزن تا دوربین همان‌جا بپرد. وقتی موجودی را دنبال می‌کنی، دوربین روی او قفل می‌شود.'},
+ {t:'نمای ایزومتریک',ic:'cube',d:'جهان را می‌توانی سه‌بعدی و ایزومتریک ببینی: زمین مربعی، خانه‌ها با سقف شیب‌دار، درخت‌ها مخروطی، و تاج طلایی رهبر بالای سرش. دکمه‌ی «نما» پایین صفحه بین ایزومتریک و دوبعدی جابه‌جا می‌شود و انتخابت ذخیره می‌شود. همه‌ی کارها — کشیدن نقشه، زوم، کلیک روی موجود و ساختمان، قدرت‌های خدا — در هر دو نما یکسان کار می‌کنند. اگر مرورگرت WebGL نداشته باشد، بازی خودکار دوبعدی می‌ماند و هیچ‌چیز خراب نمی‌شود.',ex:'مثال: در نمای ایزومتریک روی یک قبیله زوم کن؛ قلعه، برج‌ها و سرزمین رنگی‌اش را سه‌بعدی ببین، بعد با دکمه‌ی نما به دوبعدی برگرد.'},
 ];
 function buildGuide(){
   const box=$('#guideList'); if(!box) return;
@@ -4923,14 +4944,17 @@ function buildGuide(){
 let lastTap=0,lastTapX=0,lastTapY=0,downX=0,downY=0;
 const pointers=new Map();
 let panning=false, pinchPrevD=0, pinchMid=null;
-function canvasPos(e){ const r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
-canvas.addEventListener('pointerdown',e=>{
-  canvas.setPointerCapture(e.pointerId);
+function canvasPos(e){ const r=e.currentTarget.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+/* v27: ورودی لمسی/موس روی هر دو بوم (دوبعدی و ایزومتریک) بسته می‌شود —
+   فقط یکی دیده می‌شود؛ مختصات با e.currentTarget حساب می‌شود. */
+function bindWorldInput(cv){
+cv.addEventListener('pointerdown',e=>{
+  cv.setPointerCapture(e.pointerId);
   const p=canvasPos(e); pointers.set(e.pointerId,p);
   if(pointers.size===1){ downX=p.x; downY=p.y; panning=false; }
   else if(pointers.size===2){ const pts=[...pointers.values()]; pinchPrevD=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y); pinchMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2}; panning=true; }
 });
-canvas.addEventListener('pointermove',e=>{
+cv.addEventListener('pointermove',e=>{
   if(!pointers.has(e.pointerId)) return;
   const prev=pointers.get(e.pointerId); const p=canvasPos(e); pointers.set(e.pointerId,p);
   if(pointers.size===1){
@@ -4945,13 +4969,13 @@ canvas.addEventListener('pointermove',e=>{
     pinchPrevD=d; pinchMid=mid;
   }
 });
-canvas.addEventListener('pointerup',e=>{
+cv.addEventListener('pointerup',e=>{
   const wasPinch=pointers.size>=2;
   pointers.delete(e.pointerId);
   if(pointers.size===1){ const p=[...pointers.values()][0]; downX=p.x; downY=p.y; panning=false; }
   if(wasPinch||panning){ if(pointers.size===0) panning=false; return; }
   const p=canvasPos(e); if(Math.hypot(p.x-downX,p.y-downY)>12) return; // کشیدن بود، نه ضربه
-  const w=screenToWorld(p.x,p.y);
+  const w=isoPick(p.x,p.y)||screenToWorld(p.x,p.y); // v27: در نمای ایزومتریک، ری‌کست سه‌بعدی
   const now=Date.now();
   if(now-lastTap<350&&Math.hypot(p.x-lastTapX,p.y-lastTapY)<45){
     for(let i=0;i<12;i++) spawnFood(w.x+rand(-70,70),w.y+rand(-70,70));
@@ -4971,15 +4995,36 @@ canvas.addEventListener('pointerup',e=>{
     else { S.selected=null; S.follow=false; S.selectedBuilding=null; updateBuildingCard(); updateSelected(); }
   }
 });
-canvas.addEventListener('pointercancel',e=>{ pointers.delete(e.pointerId); if(pointers.size===0) panning=false; });
-canvas.addEventListener('wheel',e=>{ e.preventDefault(); const p=canvasPos(e); zoomAt(p.x,p.y,e.deltaY<0?1.15:1/1.15); },{passive:false});
-canvas.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointercancel',e=>{ pointers.delete(e.pointerId); if(pointers.size===0) panning=false; });
+cv.addEventListener('wheel',e=>{ e.preventDefault(); const p=canvasPos(e); zoomAt(p.x,p.y,e.deltaY<0?1.15:1/1.15); },{passive:false});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+}
+bindWorldInput(canvas);
+bindWorldInput(canvas3d);
 
 /* ---------------- سیم‌کشی دکمه‌ها ---------------- */
+/* v27: جابه‌جایی نما بین ایزومتریک و دوبعدی — ترجیح در localStorage می‌ماند */
+function updateViewBtn(){ const b=$('#btnView'); if(!b) return; b.innerHTML=(S.view==='iso'?icon('cube')+' ایزومتریک':icon('grid')+' دوبعدی'); }
+function applyView(){
+  if(S.view==='iso'&&!(typeof Iso3D!=='undefined'&&Iso3D.available())) S.view='2d';
+  const iso=S.view==='iso';
+  canvas.style.display=iso?'none':'block';
+  if(canvas3d) canvas3d.style.display=iso?'block':'none';
+  updateViewBtn();
+}
+function switchView(v){
+  const next=v||(S.view==='iso'?'2d':'iso');
+  if(next==='iso'&&!(typeof Iso3D!=='undefined'&&Iso3D.available())){ toast('نمای سه‌بعدی در این مرورگر در دسترس نیست'); return; }
+  S.view=next;
+  try{ localStorage.setItem('godsim-view',next); }catch(e){}
+  applyView();
+  toast(next==='iso'?'نمای ایزومتریک':'نمای دوبعدی');
+}
 function setRunning(v){
   S.running=v; $('#btnPlay').innerHTML=v?icon('pause')+' توقف':icon('play')+' ادامه';
 }
 $('#btnPlay').addEventListener('click',()=>setRunning(!S.running));
+$('#btnView').addEventListener('click',()=>switchView());
 $('#btnSpeed').addEventListener('click',()=>{
   S.speed=S.speed===1?2:S.speed===2?4:S.speed===4?8:1;
   $('#btnSpeed').innerHTML=icon('lightning')+' سرعت ×'+fa(S.speed);
@@ -5301,6 +5346,9 @@ function loop(now){
 window.addEventListener('resize',resize);
 buildSliders(); buildPresets(); buildPowers(); buildTraits(); buildGeneRules(); buildAlleleSelect(); buildGuide(); buildCiv();
 resize(); resetWorld(120);
+// v27: ترجیح نما از حافظه‌ی مرورگر (پیش‌فرض ایزومتریک؛ اگر WebGL نباشد خودکار دوبعدی می‌شود)
+try{ const pv=localStorage.getItem('godsim-view'); if(pv==='2d'||pv==='iso') S.view=pv; }catch(e){}
+applyView();
 logEvent('به جهان کوچک خوش آمدی، خدا! موجودات دنبال غذا می‌گردند؛ ویژگی تزریق کن و تکامل را تماشا کن.','good');
 logEvent('راهنما: دو بار روی زمین بزن = باران غذا. روی یک موجود بزن تا ژن‌هایش را ببینی.','good');
 updateStats(); requestAnimationFrame(loop);
