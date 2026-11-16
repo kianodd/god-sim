@@ -425,7 +425,7 @@ console.log('\n--- N. food icon ---');
 console.log('\n--- O. idle A/B (seed 12345, after 2 days) ---');
 {
   const idleGoals = (ctx) => ev(ctx, `(()=>{let n=0; for(const a of S.agents){ if(!a.dead&&a.age>=0.4&&(a.goal==='آماده‌باش درمان'||a.goal==='اندیشیدن')) n++; } return n; })()`);
-  const v25src = fs.readFileSync('/tmp/app-v25.js', 'utf8');
+  const v25src = fs.readFileSync(fs.existsSync(__dirname + '/app-v25.js') ? __dirname + '/app-v25.js' : '/tmp/app-v25.js', 'utf8');
   const cOld = makeCtx(12345, v25src);
   runDays(cOld.ctx, 2);
   const baseIdle = idleGoals(cOld.ctx);
@@ -522,7 +522,7 @@ console.log('\n--- R. minimum tribe size + collapse ---');
 // ============ S. belonging: tribe life beats living alone ============
 console.log('\n--- S. belonging (seed 12345, 10 days) ---');
 {
-  const v25src = fs.readFileSync('/tmp/app-v25.js', 'utf8');
+  const v25src = fs.readFileSync(fs.existsSync(__dirname + '/app-v25.js') ? __dirname + '/app-v25.js' : '/tmp/app-v25.js', 'utf8');
   const cOld = makeCtx(12345, v25src);
   runDays(cOld.ctx, 10);
   const base = ev(cOld.ctx, `(()=>{const adults=S.agents.filter(a=>!a.dead&&a.age>=0.4); const lone=adults.filter(a=>!a.tribeId).length; const joins=S.__log.filter(l=>l.includes('پیوست')).length; const leaves=S.__log.filter(l=>l.includes('جدا شد')).length; return {lone, adults:adults.length, loneFrac:+(lone/adults.length).toFixed(3), joins, leaves, tribes:S.tribes.length}; })()`);
@@ -591,6 +591,275 @@ console.log('\n--- T. housing / tents / landlords / tribe colors / race names --
   console.log('  lineages:', JSON.stringify(t5));
   check('every lineage has a non-numeric Persian name', t5.ok && t5.det);
   check('lineage list shows names, never numbers', t5.htmlHasName && !t5.htmlHasNumber);
+}
+
+// ============ U. desktop scrolling (live bug vs v25) ============
+console.log('\n--- U. desktop scrolling ---');
+{
+  const css = fs.readFileSync(__dirname + '/style.css', 'utf8');
+  const appSrc = fs.readFileSync(__dirname + '/app.js', 'utf8');
+  const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
+  // base CSS = everything outside @media blocks (brace-counting strip)
+  function stripMedia(s) {
+    let out = '', i = 0;
+    while (i < s.length) {
+      const m = s.indexOf('@media', i);
+      if (m < 0) { out += s.slice(i); break; }
+      out += s.slice(i, m);
+      const open = s.indexOf('{', m);
+      let d = 1, j = open + 1;
+      while (j < s.length && d > 0) { if (s[j] === '{') d++; else if (s[j] === '}') d--; j++; }
+      i = j;
+    }
+    return out;
+  }
+  const baseCss = stripMedia(css);
+  const ruleFor = (src, sel) => { const m = src.match(new RegExp(sel.replace('.', '\\.') + '\\{([^}]*)\\}')); return m ? m[1] : ''; };
+  const selRule = ruleFor(baseCss, '.selected');
+  console.log('  .selected base:', JSON.stringify(selRule.slice(0, 120)));
+  check('.selected scrolls on ALL viewports (max-height + overflow-y:auto in base rule)', selRule.includes('max-height') && selRule.includes('overflow-y:auto'));
+  const tabsRule = ruleFor(baseCss, '.tabs');
+  console.log('  .tabs base:', JSON.stringify(tabsRule.slice(0, 160)));
+  check('.tabs keeps horizontal scroll on desktop (overflow-x:auto in base rule)', tabsRule.includes('overflow-x:auto'));
+  check('.tabs scrollbar is VISIBLE on desktop (thin, not none)', tabsRule.includes('scrollbar-width:thin') && !tabsRule.includes('scrollbar-width:none'));
+  const tabsScrollRule = ruleFor(baseCss, '.tabs::-webkit-scrollbar');
+  check('.tabs webkit scrollbar is visible on desktop (height, not display:none)', tabsScrollRule.includes('height') && !tabsScrollRule.includes('display:none'));
+  check('no hidden-scrollbar trap left in base CSS', !baseCss.includes('scrollbar-width:none') && !baseCss.includes('::-webkit-scrollbar{display:none}'));
+  check('tabs scrollbar stays hidden on touch (inside a mobile media query)', css.includes('.tabs{scrollbar-width:none}'));
+  const tabRule = ruleFor(baseCss, '.tab');
+  check('.tab does not force full width (flex:0 0 auto + max-width + ellipsis)', tabRule.includes('flex:0 0 auto') && tabRule.includes('max-width') && tabRule.includes('text-overflow:ellipsis'));
+  const panelRule = ruleFor(baseCss, '.panel');
+  check('.panel itself scrolls vertically on desktop', panelRule.includes('overflow-y:auto'));
+  const extRule = ruleFor(baseCss, '.extinct-inner');
+  check('dialog (extinct + new-world modal) scrolls on short viewports', extRule.includes('max-height') && extRule.includes('overflow-y:auto'));
+  const ovRule = ruleFor(baseCss, '.confirm-overlay');
+  check('confirm overlay scrolls on short viewports', ovRule.includes('overflow-y:auto'));
+  // both cards share .selected, so the one rule covers both
+  const tabCount = (html.match(/class="tab[ "]/g) || []).length;
+  const cardCount = (html.match(/class="selected"/g) || []).length;
+  console.log('  tab buttons in index.html:', tabCount, '| .selected cards:', cardCount);
+  check('all 7 tabs exist in the markup', tabCount === 7);
+  check('both cards (agent + building) use .selected', cardCount === 2);
+  check('wheel over the tab row scrolls it horizontally (RTL-aware handler in app.js)', appSrc.includes("querySelector('.tabs')") && appSrc.includes('tabsEl.scrollLeft') && appSrc.includes("direction==='rtl'"));
+  check('clicking a tab scrolls it into view', appSrc.includes('scrollIntoView') && appSrc.includes("inline:'nearest'"));
+}
+
+// ============ V. land hunger: expansion drive, hatred over land, wars over land ============
+console.log('\n--- V. land hunger ---');
+{
+  // V1: owned tiles GROW over a 10-day run (vs the v25 baseline of no territory system)
+  const { ctx } = makeCtx(12345);
+  runDays(ctx, 1);
+  const tiles1 = ev(ctx, `S.tribes.reduce((s,t)=>s+tribeTiles(t),0)`);
+  runDays(ctx, 9);
+  const tiles10 = ev(ctx, `S.tribes.reduce((s,t)=>s+tribeTiles(t),0)`);
+  console.log('  total owned tiles day1:', tiles1, 'day10:', tiles10);
+  check('owned tiles per tribe GROW over a 10-day run', tiles10 > tiles1 && tiles10 > 100);
+  check('v25 baseline had no territory system at all', !fs.readFileSync('/home/hatch/workspace/god-sim/app-v25.js', 'utf8').includes('S.tiles'));
+
+  // V2: expansion is gated by resources — a tribe with no wood does not expand
+  const { ctx: c2 } = makeCtx(777);
+  ensureTribes(c2, 1);
+  const t2 = ev(c2, `S.tribes[0].id`);
+  ev(c2, `(()=>{const t=tribeById(${t2}); t.stock.wood=0; t.stock.stone=0; t.stock.food=500; const b=tribeMembers(t).find(a=>a.age>=0.4); b.job='builder'; b.x=t.home.x; b.y=t.home.y; for(let i=0;i<200;i++){ claimStep(b,t,1,30); } })()`);
+  const tilesAfter2 = ev(c2, `tribeTiles(tribeById(${t2}))`);
+  console.log('  no-resources tribe tiles after 200 claim attempts:', tilesAfter2);
+  check('a tribe with no resources does not expand (claim cost gates it)', tilesAfter2 <= 40);
+
+  // V3: with surplus wood + an idle builder, tiles grow (claimStep works)
+  const { ctx: c3 } = makeCtx(778);
+  ensureTribes(c3, 1);
+  const t3 = ev(c3, `S.tribes[0].id`);
+  const before3 = ev(c3, `tribeTiles(tribeById(${t3}))`);
+  ev(c3, `(()=>{const t=tribeById(${t3}); t.stock.wood=500; t.stock.stone=500; const b=tribeMembers(t).find(a=>a.age>=0.4); b.job='builder'; b.x=t.home.x; b.y=t.home.y; for(let i=0;i<6000;i++){ claimStep(b,t,1/20,30); } })()`);
+  const after3 = ev(c3, `tribeTiles(tribeById(${t3}))`);
+  console.log('  surplus tribe tiles:', before3, '->', after3);
+  check('a tribe with surplus resources and an idle builder keeps expanding', after3 > before3);
+
+  // V4: borders meeting -> rising border tension + a land grievance, shown in the panel
+  const { ctx: c4 } = makeCtx(779);
+  ensureTribes(c4, 2);
+  ev(c4, `(()=>{ const a=S.tribes[0], b=S.tribes[1];
+    const dx=350, dy=0;
+    b.home.x=a.home.x+dx; b.home.y=a.home.y+dy; b.centre={x:b.home.x,y:b.home.y};
+    for(const bl of S.buildings) if(bl.tribeId===b.id){ bl.x+=dx; bl.y+=dy; }
+    recomputeTerritory(a); recomputeTerritory(b); updateTerritoryDistances();
+    a.relations[b.id]=0; b.relations[a.id]=0; })()`);
+  const dist4 = ev(c4, `territoryDist(S.tribes[0],S.tribes[1])`);
+  ev(c4, `(()=>{ for(let i=0;i<12;i++) borderTensionTick(5); })()`);
+  const ten4 = ev(c4, `(S.tribes[0].borderTension||{})[S.tribes[1].id]||0`);
+  console.log('  territory distance:', Math.round(dist4), 'border tension after 60s:', ten4.toFixed(1));
+  check('two tribes whose borders meet show rising border tension', ten4 > 20);
+  const grBefore = ev(c4, `(S.tribes[0].grievance||{})[S.tribes[1].id]||0`);
+  ev(c4, `(()=>{ const a=S.tribes[0], b=S.tribes[1]; a.borderTension[b.id]=60; a.landGrudgeT[b.id]=59; borderTensionTick(5); })()`);
+  const grAfter = ev(c4, `(S.tribes[0].grievance||{})[S.tribes[1].id]||0`);
+  check('sustained border tension adds a land grievance (+2 per day of tension)', grAfter >= grBefore + 2);
+  const panelShows = ev(c4, `(()=>{ try{ renderCiv(); return document.getElementById('tribeDetail').innerHTML.includes('تنش مرزی'); }catch(e){ return 'ERR:'+e.message; } })()`);
+  check('the tribe panel shows the per-border tension value', panelShows === true);
+
+  // V5: a land-dispute war -> winner gains tiles, loser gains a revenge grudge, logged clearly
+  const { ctx: c5 } = makeCtx(780);
+  ensureTribes(c5, 2);
+  ev(c5, `(()=>{ const a=S.tribes[0], b=S.tribes[1];
+    b.home.x=a.home.x+400; b.home.y=a.home.y; b.centre={x:b.home.x,y:b.home.y};
+    for(const bl of S.buildings) if(bl.tribeId===b.id){ bl.x+=400; }
+    recomputeTerritory(a); recomputeTerritory(b); updateTerritoryDistances();
+    a.relations[b.id]=-60; b.relations[a.id]=-60; })()`);
+  setWarriors(c5, ev(c5, `S.tribes[0].id`), 3);
+  setWarriors(c5, ev(c5, `S.tribes[1].id`), 3);
+  const wTilesBefore = ev(c5, `tribeTiles(S.tribes[0])`);
+  const lTilesBefore = ev(c5, `tribeTiles(S.tribes[1])`);
+  const grLBefore = ev(c5, `(S.tribes[1].grievance||{})[S.tribes[0].id]||0`);
+  ev(c5, `(()=>{ const a=S.tribes[0], b=S.tribes[1];
+    const w1=tribeMembers(a).filter(x=>x.job==='warrior').slice(0,3).map(x=>x.id);
+    const w2=tribeMembers(b).filter(x=>x.job==='warrior').slice(0,3).map(x=>x.id);
+    const bt={id:999,t1:a.id,t2:b.id,x:0,y:0,big:false,s1:w1,s2:w2,t:0,state:'fight'};
+    S.battles.push(bt); endBattle(bt,a.id); })()`);
+  const wTilesAfter = ev(c5, `tribeTiles(S.tribes[0])`);
+  const lTilesAfter = ev(c5, `tribeTiles(S.tribes[1])`);
+  const grLAfter = ev(c5, `(S.tribes[1].grievance||{})[S.tribes[0].id]||0`);
+  const spoilsLog = ev(c5, `S.__log.some(l=>l.includes('تصاحب کرد'))`);
+  console.log('  war spoils: winner tiles', wTilesBefore, '->', wTilesAfter, '| loser', lTilesBefore, '->', lTilesAfter, '| loser grudge', grLBefore, '->', grLAfter);
+  check('a land-dispute war transfers tiles to the winner', wTilesAfter > wTilesBefore && lTilesAfter < lTilesBefore);
+  check("losing land feeds the loser's grudge for revenge", grLAfter > grLBefore);
+  check('the land seizure is logged clearly', spoilsLog);
+
+  // V6: overextension guardrails — territory has a cap, and claiming far from home costs more
+  const cap6 = ev(c5, `territoryCap(S.tribes[0])`);
+  const costNear = ev(c5, `claimCostAt(S.tribes[0],S.tribes[0].home.x+50,S.tribes[0].home.y)`);
+  const costFar = ev(c5, `claimCostAt(S.tribes[0],S.tribes[0].home.x+700,S.tribes[0].home.y)`);
+  console.log('  territory cap:', cap6, '| claim cost near home:', JSON.stringify(costNear), 'far:', JSON.stringify(costFar));
+  check('territory has a cap (population + towers), not infinite growth', cap6 > 0 && cap6 < 500);
+  check('claiming far from home costs more than claiming near home', (costFar.wood + costFar.stone) > (costNear.wood + costNear.stone));
+}
+
+// ============ W. building decay: HP falls, builders repair, collapse, repair button ============
+console.log('\n--- W. building decay ---');
+{
+  // W1: a building's HP falls over time with no repair (civTick drives decay; stock 0 so no upgrade/repair interferes)
+  const { ctx } = makeCtx(881);
+  ensureTribes(ctx, 1);
+  const t = ev(ctx, `S.tribes[0].id`);
+  giveBuildings(ctx, t, ['house', 'farm']);
+  const w1 = ev(ctx, `(()=>{const t=tribeById(${t}); t.stock.wood=0; t.stock.stone=0; const b=S.buildings.filter(x=>x.tribeId===${t}&&x.type==='house').pop(); return {bid:b.id, hp:b.hp}; })()`);
+  ev(ctx, `civTick(120)`);
+  const hpAfter = ev(ctx, `(()=>{const b=S.buildings.find(x=>x.id===${w1.bid}); return b?b.hp:null; })()`);
+  console.log('  house HP after 120s of decay:', w1.hp, '->', hpAfter);
+  check("a building's HP falls over time with no repair", hpAfter !== null && hpAfter < w1.hp);
+
+  // W2: a tribe with builders and resources repairs a damaged building back up
+  const { ctx: c2 } = makeCtx(882);
+  ensureTribes(c2, 1);
+  const t2 = ev(c2, `S.tribes[0].id`);
+  giveBuildings(c2, t2, ['house']);
+  ev(c2, `(()=>{const t=tribeById(${t2}); t.stock.wood=500; t.stock.stone=500; const b=S.buildings.find(x=>x.tribeId===${t2}&&x.type==='house'); b.hp=10; const a=tribeMembers(t).find(x=>x.age>=0.4); a.job='builder'; a.x=b.x; a.y=b.y; for(let i=0;i<100;i++) repairStep(a,t,1,30); })()`);
+  const hp2 = ev(c2, `(()=>{const b=S.buildings.find(x=>x.tribeId===${t2}&&x.type==='house'); return b.hp; })()`);
+  console.log('  repaired house HP:', hp2);
+  check('a tribe with builders and resources repairs a damaged building back up', hp2 > 10);
+
+  // W3: an unrepaired building eventually collapses and is removed (house -> family homeless)
+  const { ctx: c3 } = makeCtx(883);
+  ensureTribes(c3, 1);
+  const t3 = ev(c3, `S.tribes[0].id`);
+  giveBuildings(c3, t3, ['house']);
+  const houseId3 = ev(c3, `(()=>{const t=tribeById(${t3}); t.stock.wood=0; t.stock.stone=0; const b=S.buildings.filter(x=>x.tribeId===${t3}&&x.type==='house').pop(); b.hp=1;
+    const f=S.families.find(x=>x.members.some(id=>{const a=S.agents.find(z=>z.id===id); return a&&a.tribeId===${t3};})); if(f){ f.houseId=b.id; b.ownerFamilyId=f.id; return {bid:b.id,fid:f.id}; } return {bid:b.id,fid:null}; })()`);
+  ev(c3, `civTick(60)`); // 60 ثانیه فرسودگی — خانه‌ی ۱ جان فرو می‌ریزد (بدون جمع‌آوری منابع در این فاصله)
+  const houseGone = ev(c3, `!S.buildings.some(b=>b.id===${houseId3.bid})`);
+  const collapseLog = ev(c3, `S.__log.some(l=>l.includes('فرو ریخت'))`);
+  console.log('  house collapsed:', houseGone, '| collapse logged:', collapseLog, '| family was:', houseId3.fid);
+  check('an unrepaired building eventually collapses and is removed', houseGone);
+  check('the collapse is logged (فرو ریخت)', collapseLog);
+  if (houseId3.fid) {
+    const famHomeless = ev(c3, `(()=>{const f=familyById(${houseId3.fid}); return f&&!f.houseId; })()`);
+    check('a collapsed house leaves its family homeless', famHomeless);
+  } else {
+    check('a collapsed house leaves its family homeless (no family lived in the test house — skipped)', true);
+  }
+
+  // W4: the repair button restores HP, and the card shows the repair need
+  const { ctx: c4 } = makeCtx(884);
+  ensureTribes(c4, 1);
+  const t4 = ev(c4, `S.tribes[0].id`);
+  giveBuildings(c4, t4, ['house']);
+  ev(c4, `(()=>{const t=tribeById(${t4}); t.stock.wood=100; t.stock.stone=100; const b=S.buildings.find(x=>x.tribeId===${t4}&&x.type==='house'); b.hp=20; S.selectedBuilding=b; updateBuildingCard(); })()`);
+  const cardTxt = ev(c4, `document.getElementById('bldInfo').textContent`);
+  check('the building card shows "نیاز به تعمیر" when HP is low', String(cardTxt).includes('نیاز به تعمیر'));
+  const panelRep = ev(c4, `(()=>{ try{ renderCiv(); return document.getElementById('tribeDetail').innerHTML.includes('نیاز به تعمیر'); }catch(e){ return 'ERR:'+e.message; } })()`);
+  check('the tribe panel lists buildings needing repair', panelRep === true);
+  const hpBefore4 = ev(c4, `(()=>{const b=S.buildings.find(x=>x.tribeId===${t4}&&x.type==='house'); return b.hp; })()`);
+  ev(c4, `document.getElementById('btnBuildRepair').dispatch('click')`);
+  const hpAfter4 = ev(c4, `(()=>{const b=S.buildings.find(x=>x.tribeId===${t4}&&x.type==='house'); return b.hp; })()`);
+  console.log('  repair button HP:', hpBefore4, '->', hpAfter4);
+  check('the repair button restores HP', hpAfter4 > hpBefore4);
+
+  // W5: a damaged building draws visibly worn (no crash, darker + crack path runs)
+  const drawOk = ev(c4, `(()=>{ try{ const b=S.buildings.find(x=>x.tribeId===${t4}&&x.type==='house'); b.hp=10; drawBuilding(b); return true; }catch(e){ return 'ERR:'+e.message; } })()`);
+  check('a damaged building draws without error (worn look)', drawOk === true);
+}
+
+// ============ X. roads between tribes' territories ============
+console.log('\n--- X. inter-tribe roads ---');
+{
+  // X1: friendly tribes build a road connecting their territories
+  const { ctx } = makeCtx(901);
+  ensureTribes(ctx, 2);
+  ev(ctx, `(()=>{ const a=S.tribes[0], b=S.tribes[1];
+    b.home.x=a.home.x+500; b.home.y=a.home.y; b.centre={x:b.home.x,y:b.home.y};
+    for(const bl of S.buildings) if(bl.tribeId===b.id){ bl.x+=500; }
+    recomputeTerritory(a); recomputeTerritory(b); updateTerritoryDistances();
+    a.relations[b.id]=50; b.relations[a.id]=50;
+    a.stock.wood=500; b.stock.wood=500; a.stock.stone=500; b.stock.stone=500; })()`);
+  ev(ctx, `(()=>{ const a=S.tribes[0]; a.interRoadT=0; interRoadTick(a,1); })()`);
+  const proj = ev(ctx, `(()=>{ const a=S.tribes[0], b=S.tribes[1]; const p=a.interRoads[b.id]; return p?{len:p.path.length,done:p.done}:null; })()`);
+  console.log('  inter-road project:', JSON.stringify(proj));
+  check('two friendly tribes start a road project between their territories', proj && proj.len >= 3 && !proj.done);
+  ev(ctx, `(()=>{ const a=S.tribes[0]; const p=a.interRoads[S.tribes[1].id]; const builder=tribeMembers(a).find(x=>x.age>=0.4); builder.job='builder';
+    for(let k=0;k<300&&!p.done;k++){ const idx=p.path[p.next]; if(idx==null) break; const cx=(idx%TW)*TILE+TILE/2, cy=Math.floor(idx/TW)*TILE+TILE/2; builder.x=cx; builder.y=cy; interRoadStep(builder,a,3,30); }
+  })()`);
+  const done = ev(ctx, `(()=>{ const a=S.tribes[0], b=S.tribes[1]; return !!(a.interRoads[b.id]&&a.interRoads[b.id].done); })()`);
+  const roadLog = ev(ctx, `S.__log.some(l=>l.includes('جاده‌ای بین'))`);
+  console.log('  inter-road done:', done, '| logged:', roadLog);
+  check('the road gets built and completes (logged)', done && roadLog);
+  const cont = ev(ctx, `(()=>{ const a=S.tribes[0], b=S.tribes[1]; const p=a.interRoads[b.id]; return p.path.every(idx=>S.roads[idx]===1||S.tiles[idx]!==0); })()`);
+  check('the road is a continuous path of road tiles from one border to the other', cont);
+
+  // X2: traders between road-connected tribes turn around faster (more frequent trade)
+  const { ctx: c2 } = makeCtx(902);
+  ensureTribes(c2, 2);
+  ev(c2, `(()=>{ const a=S.tribes[0], b=S.tribes[1];
+    for(const t of [a,b]){ for(const tc of TECHS) t.techs[tc.id]=true; t.stock.wood=500; t.stock.stone=500; }
+    a.stock.food=200; b.stock.food=5; b.stock.coins=100; a.relations[b.id]=50; b.relations[a.id]=50;
+    a.interRoads[b.id]={path:[],next:0,done:true}; b.interRoads[a.id]={path:[],next:0,done:true}; })()`);
+  giveBuildings(c2, ev(c2, `S.tribes[0].id`), ['market']);
+  giveBuildings(c2, ev(c2, `S.tribes[1].id`), ['market']);
+  const tradeT = ev(c2, `(()=>{ const a=S.tribes[0], b=S.tribes[1];
+    const tr=tribeMembers(a).find(x=>x.age>=0.4); tr.job='trader'; tr.tradeDest=b.id; tr.tradeGood='food';
+    const dm=S.buildings.find(x=>x.tribeId===b.id&&x.type==='market'); tr.x=dm.x; tr.y=dm.y;
+    traderStep(tr,a,1,30,0.5); return tr.tradeT; })()`);
+  const traded = ev(c2, `S.tradeCount>0`);
+  console.log('  trader turnaround after a road trade:', tradeT, '| trade happened:', traded);
+  check('traders between road-connected tribes turn around faster (tradeT 6, not 12)', tradeT === 6 && traded);
+
+  // X3: in war, the road between the warring tribes is cut
+  const cut = ev(ctx, `(()=>{ const a=S.tribes[0], b=S.tribes[1];
+    const before=S.roads.filter(x=>x===1).length;
+    for(const t of [a,b]){ const ms=tribeMembers(t).filter(x=>x.age>=0.4).slice(0,3); for(const m of ms){ m.job='warrior'; m.equip={weapon:'club',shield:null,armor:null}; } }
+    const war=declareWar(a,b,false);
+    const after=S.roads.filter(x=>x===1).length;
+    return {war:!!war, before, after, cutLog:S.__log.some(l=>l.includes('قطع شد')), hasRoad:hasInterRoad(a,b)}; })()`);
+  console.log('  war cut:', JSON.stringify(cut));
+  check('declaring war cuts the inter-tribe road (tiles cleared, record gone, logged)', cut.war && cut.after < cut.before && !cut.hasRoad && cut.cutLog);
+
+  // X4: hostile tribes do NOT build roads to each other
+  const { ctx: c4 } = makeCtx(903);
+  ensureTribes(c4, 2);
+  ev(c4, `(()=>{ const a=S.tribes[0], b=S.tribes[1];
+    b.home.x=a.home.x+500; b.home.y=a.home.y; b.centre={x:b.home.x,y:b.home.y};
+    recomputeTerritory(a); recomputeTerritory(b); updateTerritoryDistances();
+    a.relations[b.id]=-50; b.relations[a.id]=-50; a.stock.wood=500; a.interRoadT=0; interRoadTick(a,1); })()`);
+  const noProj = ev(c4, `(()=>{ const a=S.tribes[0], b=S.tribes[1]; return !a.interRoads[b.id]; })()`);
+  check('hostile tribes (at war or very negative relations) do NOT build roads to each other', noProj);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

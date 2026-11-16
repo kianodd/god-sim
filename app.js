@@ -1925,7 +1925,9 @@ function newTribe(founder){
     warWins:0, warLosses:0, recentDeaths:0, lastBuiltT:0,
     protesting:false, protestT:0, revoltT:0, protestCd:0, revoltCd:0,
     /* v5: فروپاشی قبیله‌ی ناتوان — مهلت یک روزه + هشدار اول */
-    collapseT:0, collapseWarned:false, collapseDue:false, collapseReason:''};
+    collapseT:0, collapseWarned:false, collapseDue:false, collapseReason:'',
+    /* v5: طمع زمین، نفرت از زمین، جاده‌های بین‌قبیله‌ای */
+    borderTension:{}, contested:{}, landGrudgeT:{}, interRoads:{}, claimCd:0, interRoadT:0};
   for(const o of S.tribes){ t.relations[o.id]=0; o.relations[t.id]=0; }
   return t;
 }
@@ -2130,7 +2132,8 @@ function assignJobs(t){
 function moveToward(a,tx,ty,dt,speed){
   const dx=tx-a.x,dy=ty-a.y,d=Math.hypot(dx,dy);
   if(d<8) return true;
-  a.x+=dx/d*speed*dt; a.y+=dy/d*speed*dt; a.angle=Math.atan2(dy,dx);
+  const step=Math.min(d,speed*dt); // هرگز از هدف رد نمی‌شویم — وگرنه دور هدف نوسان می‌کند و هیچ‌وقت نمی‌رسد
+  a.x+=dx/d*step; a.y+=dy/d*step; a.angle=Math.atan2(dy,dx);
   return false;
 }
 function nearestResource(a){
@@ -2232,6 +2235,66 @@ function updateTerritoryDistances(){
   }
 }
 function distBonus(t){ const nr=nearestRival(t); if(!nr) return 0; const d=territoryDist(t,nr.o); return 0.25*Math.max(0,1-d/1000); } // نزدیکی سرزمین‌ها تا +۰٫۲۵ تمایل به جنگ
+/* v5: طمع زمین، نفرت از زمین، جنگ بر سر زمین — قبیله‌ها زمین می‌خواهند، از تصاحب زمین نزدیک مرز خشمگین می‌شوند، و برنده‌ی جنگ زمین می‌گیرد */
+function territoryCap(t){ const towers=S.buildings.filter(b=>b.tribeId===t.id&&(b.type==='tower'||b.type==='castle')&&b.progress>=100).length; return 60+tribeMembers(t).length*4+towers*15; } // سقف سرزمین با جمعیت و برج‌ها بالا می‌رود — بی‌نهایت نیست
+function claimCostAt(t,x,y){ const d=Math.hypot(x-t.home.x,y-t.home.y); return {wood:1+(d>600?1:0),stone:d>400?1:0}; } // هرچه دورتر از خانه، گران‌تر
+function tileDefense(t,x,y){ let d=0; for(const b of S.buildings){ if(b.tribeId!==t.id||b.progress<100) continue; if(b.type==='tower'&&Math.hypot(b.x-x,b.y-y)<250) d+=2; if(b.type==='castle'&&Math.hypot(b.x-x,b.y-y)<300) d+=3; if(b.type==='wall'&&Math.hypot(b.x-x,b.y-y)<150) d+=1; } for(const a of S.agents){ if(a.dead||a.tribeId!==t.id||(a.job!=='warrior'&&a.job!=='guard')) continue; if(Math.hypot(a.x-x,a.y-y)<150) d+=1; } return d; } // دفاع یک خانه از برج و قلعه و دیوار و نگهبانان نزدیکش
+function contestedTiles(t,o){ let n=0; for(let i=0;i<S.tiles.length;i++){ if(S.tiles[i]!==0) continue; const tx=i%TW, ty=Math.floor(i/TW); let aT=false,bT=false; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=tx+dx,ny=ty+dy; if(nx<0||ny<0||nx>=TW||ny>=TH) continue; const ow=S.tiles[ny*TW+nx]; if(ow===t.id) aT=true; if(ow===o.id) bT=true; } if(aT&&bT) n++; } return n; } // خانه‌های بی‌صاحبِ چسبیده به سرزمین هر دو — هر دو می‌خواهندشان
+function borderTensionTick(dt){
+  for(const t of S.tribes){
+    t.borderTension=t.borderTension||{}; t.contested=t.contested||{}; t.landGrudgeT=t.landGrudgeT||{};
+    for(const o of S.tribes){
+      if(o.id===t.id) continue;
+      const d=territoryDist(t,o), cont=contestedTiles(t,o);
+      t.contested[o.id]=cont;
+      let ten=t.borderTension[o.id]||0;
+      if(d<50) ten+=dt*2; else if(d<100) ten+=dt*0.8; else if(d>300) ten-=dt*1; else ten-=dt*0.2;
+      ten+=cont*dt*0.15; // هر خانه‌ی مورد مناقشه تنش را بالا می‌برد
+      t.borderTension[o.id]=clamp(ten,0,100);
+      // کینه‌ی زمین: هر روزِ تنشِ بالای ۵۰، +۲ کینه
+      if(t.borderTension[o.id]>50){ t.landGrudgeT[o.id]=(t.landGrudgeT[o.id]||0)+dt; if(t.landGrudgeT[o.id]>=S.settings.dayLength){ t.landGrudgeT[o.id]=0; addGrievance(t,o,2); logEvent('تنش مرزی '+t.name+' و '+o.name+' بالا گرفت — هر دو بر سر زمین با هم دشمن‌اند.','bad'); } }
+      else t.landGrudgeT[o.id]=0;
+    }
+  }
+}
+function landProvocation(claimer,x,y){
+  // تصاحب زمین چسبیده به سرزمین رقیبِ غیر دوست، تحریک است — کینه +۳ (با وقفه، تا اسپم نشود)
+  for(const o of S.tribes){
+    if(o.id===claimer.id||isAlly(claimer,o)||(claimer.relations[o.id]||0)>0) continue;
+    let near=false;
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ if(tileOwnerAt(x+dx*TILE,y+dy*TILE)===o.id){ near=true; break; } }
+    if(!near) continue;
+    claimer.landProvT=claimer.landProvT||{};
+    if(S.elapsed-(claimer.landProvT[o.id]||0)<30) continue;
+    claimer.landProvT[o.id]=S.elapsed;
+    addGrievance(o,claimer,3);
+    logEvent(claimer.name+' زمینی چسبیده به مرز '+o.name+' را تصاحب کرد — '+o.name+' خشمگین شد!','bad');
+  }
+}
+function transferWarSpoils(win,lose){
+  if(!win||!lose) return 0;
+  let taken=0;
+  const takeTile=i=>{ S.tiles[i]=win.id; S.tileCounts[win.id]=(S.tileCounts[win.id]||0)+1; S.tileCounts[lose.id]=Math.max(0,(S.tileCounts[lose.id]||0)-1); taken++; };
+  // اول: خانه‌های بازنده که چسبیده به سرزمین برنده‌اند (نوار مرزی) — ولی نه آن‌هایی که خوب دفاع می‌شوند
+  for(const i of tileList(lose)){
+    const tx=i%TW, ty=Math.floor(i/TW);
+    let adj=false;
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=tx+dx,ny=ty+dy; if(nx>=0&&ny>=0&&nx<TW&&ny<TH&&S.tiles[ny*TW+nx]===win.id){ adj=true; break; } }
+    if(!adj) continue;
+    if(tileDefense(lose,tx*TILE+TILE/2,ty*TILE+TILE/2)>=4) continue; // سنگر خوب دفاع‌شده نمی‌افتد
+    takeTile(i);
+  }
+  // بعد: تا ۱۲ خانه‌ی دیگرِ بازنده، نزدیک‌ترین‌ها به خانه‌ی برنده
+  if(taken<12){
+    const rest=tileList(lose).map(i=>({i,d:Math.hypot((i%TW)*TILE+TILE/2-win.home.x,Math.floor(i/TW)*TILE+TILE/2-win.home.y)})).sort((x,y)=>x.d-y.d);
+    for(const r of rest){ if(taken>=12) break; if(tileDefense(lose,(r.i%TW)*TILE+TILE/2,Math.floor(r.i/TW)*TILE+TILE/2)>=4) continue; takeTile(r.i); }
+  }
+  if(taken>0){
+    addGrievance(lose,win,10); // باختن زمین کینه‌ی انتقام می‌سازد
+    logEvent('قبیله «'+win.name+'» در جنگ زمین‌های قبیله «'+lose.name+'» را تصاحب کرد ('+fa(taken)+' خانه).','bad');
+  }
+  return taken;
+}
 function foreignTerritoryAt(x,y,ownId){
   const owner=tileOwnerAt(x,y);
   if(!owner||owner===ownId) return null;
@@ -2262,6 +2325,9 @@ function warAppetite(t){
   let app=agg*0.6+((op+1)/2)*0.25+Math.min(0.3,gr/40);
   if(t.stock.food<20) app+=0.15; // گرسنگی هم جنگ‌طلب می‌کند
   app+=distBonus(t); // v5: نزدیکی رقیب — اصطکاک مرزی
+  // v5: تنش مرزی و خانه‌های مورد مناقشه هم تمایل به جنگ را بالا می‌برند
+  const nr2=nearestRival(t);
+  if(nr2){ app+=Math.min(0.2,((t.borderTension||{})[nr2.o.id]||0)/500); app+=Math.min(0.1,((t.contested||{})[nr2.o.id]||0)*0.02); }
   return clamp(app,0,1);
 }
 function addGrievance(t,o,n){
@@ -2314,7 +2380,12 @@ function attackBuilding(a,b,dt){
   burst(b.x,b.y,'#f43f5e',2,40);
   if(b.hp<=0) destroyBuilding(b,tribeById(a.tribeId));
 }
-function destroyBuilding(b,byTribe){
+function collapseBuilding(b){
+  const t=tribeById(b.tribeId), def=BUILDINGS[b.type];
+  logEvent('«'+def.name+'» در '+(t?t.name:'بی‌صاحب')+' به خاطر عدم تعمیر فرو ریخت!'+(b.type==='house'?' خانواده‌ای بی‌خانه شد.':''),'bad');
+  destroyBuilding(b,null,'decay'); // ویرانیِ ساختمان سرزمین دورش را پس می‌گیرد و خانواده‌اش بی‌خانه می‌شود
+}
+function destroyBuilding(b,byTribe,reason){
   const t=tribeById(b.tribeId);
   const def=BUILDINGS[b.type];
   const bi=S.buildings.indexOf(b); if(bi>=0) S.buildings.splice(bi,1);
@@ -2324,7 +2395,7 @@ function destroyBuilding(b,byTribe){
   if(b.renterFamilyId){ const fam=familyById(b.renterFamilyId); if(fam) fam.renterFamilyId=null; }
   if(t) recomputeTerritory(t); // v5 (tiles): با ویرانی ساختمان، سرزمین دور آن پس گرفته می‌شود
   if(t&&byTribe&&byTribe.id!==t.id){ addGrievance(t,byTribe,8); logEvent('«'+def.name+'» در '+t.name+' به دست '+byTribe.name+' ویران شد!'+(b.type==='house'?' خانواده‌ای بی‌خانه شد.':''),'bad'); }
-  else if(t){ logEvent('«'+def.name+'» در '+t.name+' ویران شد.','bad'); }
+  else if(t&&reason!=='decay'){ logEvent('«'+def.name+'» در '+t.name+' ویران شد.','bad'); }
   if(t) checkTribeCollapse(t,byTribe);
 }
 function checkTribeCollapse(t,winner){
@@ -2709,14 +2780,145 @@ function roadStep(a,t,dt,speed){
   if(a.workT>=2.5){
     a.workT=0; t.stock.wood-=2; t.roadCd=15;
     claimTile(a.roadIdx%TW,Math.floor(a.roadIdx/TW),t.id); S.roads[a.roadIdx]=1;
+    landProvocation(t,a.roadTx,a.roadTy); // جاده چسبیده به مرز رقیب هم تحریک است
     floater(a.x,a.y-16,'جاده ساخته شد','#d6a860');
     a.roadTx=null; a.roadTy=null; a.roadIdx=null;
   }
   return true;
 }
+/* v5: جاده‌های بین‌قبیله‌ای — دو قبیله‌ی دوست با جاده به هم وصل می‌شوند؛ جاده خنثی است (مال هیچ‌کدام نیست)، سرعت روی آن ۱٫۳ برابر است، تجارت بینشان بیشتر می‌شود و رابطه‌شان آهسته بهتر می‌شود. با شروع جنگ جاده قطع می‌شود. */
+function hasInterRoad(t,o){ return !!((t.interRoads||{})[o.id]&&t.interRoads[o.id].done); }
+function interRoadPath(a,b){
+  const A=tileList(a), B=tileList(b);
+  if(!A.length||!B.length) return null;
+  let best=null,bd=Infinity;
+  for(const ia of A){ const ax=(ia%TW)*TILE+TILE/2, ay=Math.floor(ia/TW)*TILE+TILE/2;
+    for(const ib of B){ const bx=(ib%TW)*TILE+TILE/2, by=Math.floor(ib/TW)*TILE+TILE/2;
+      const d=(ax-bx)*(ax-bx)+(ay-by)*(ay-by); if(d<bd){bd=d;best={ia,ib};} } }
+  if(!best) return null;
+  const x0=best.ia%TW, y0=Math.floor(best.ia/TW), x1=best.ib%TW, y1=Math.floor(best.ib/TW);
+  const path=[]; let x=x0, y=y0; const dx=Math.abs(x1-x0), dy=-Math.abs(y1-y0), sx=x0<x1?1:-1, sy=y0<y1?1:-1; let err=dx+dy;
+  let guard=0;
+  while(guard++<500){ path.push(y*TW+x); if(x===x1&&y===y1) break; const e2=2*err; if(e2>=dy){ err+=dy; x+=sx; } if(e2<=dx){ err+=dx; y+=sy; } }
+  return path;
+}
+function interRoadTick(t,dt){
+  t.interRoadT=(t.interRoadT||0)-dt; if(t.interRoadT>0) return; t.interRoadT=20;
+  // شریک: اول متحد، بعد رابطه‌ی خوب و نزدیک؛ جنگ یا رابطه‌ی منفی یعنی جاده نه
+  const cands=S.tribes.filter(o=>o.id!==t.id&&!atWarWith(t,o)&&!inTruce(t,o)&&(t.relations[o.id]||0)>0&&!(t.interRoads||{})[o.id]&&!(o.interRoads||{})[t.id]);
+  if(!cands.length) return;
+  cands.sort((x,y)=>((isAlly(t,y)?1:0)-(isAlly(t,x)?1:0))||((t.relations[y.id]||0)-(t.relations[x.id]||0))||(territoryDist(t,x)-territoryDist(t,y)));
+  const o=cands[0];
+  if(territoryDist(t,o)>600) return; // خیلی دور — جاده نمی‌صرفد
+  const path=interRoadPath(t,o);
+  if(!path||path.length<3) return;
+  if(t.stock.wood<10) return; // شروع پروژه چوب می‌خواهد — سازنده‌اش را قبیله‌ی آغازگر می‌پردازد
+  t.interRoads=t.interRoads||{}; t.interRoads[o.id]={path,next:0,done:false};
+  logEvent(t.name+' ساخت جاده به '+o.name+' را شروع کرد.','good');
+}
+function interRoadStep(a,t,dt,speed){
+  if(!t) return false;
+  const proj=Object.values(t.interRoads||{}).find(p=>p&&!p.done);
+  if(!proj) return false;
+  while(proj.next<proj.path.length){ const idx=proj.path[proj.next]; if(S.roads&&S.roads[idx]){ proj.next++; continue; } if(S.tiles[idx]!==0){ proj.next++; continue; } break; }
+  if(proj.next>=proj.path.length){
+    proj.done=true;
+    const pid=Object.keys(t.interRoads).find(k=>t.interRoads[k]===proj); const o=tribeById(+pid);
+    if(o){ o.interRoads=o.interRoads||{}; o.interRoads[t.id]={path:proj.path,next:proj.path.length,done:true}; }
+    logEvent('جاده‌ای بین '+t.name+' و '+(o?o.name:'؟')+' کشیده شد — تجارت و رفت‌وآمد سریع‌تر شد.','good');
+    return false;
+  }
+  const idx=proj.path[proj.next], cx=(idx%TW)*TILE+TILE/2, cy=Math.floor(idx/TW)*TILE+TILE/2;
+  if(t.stock.wood<1) return false;
+  a.goal='جاده‌سازی بین قبیله‌ها';
+  if(!moveToward(a,cx,cy,dt,speed)) return true;
+  a.workT=(a.workT||0)+dt;
+  if(a.workT>=2){ a.workT=0; t.stock.wood-=1; S.roads[idx]=1; proj.next++; }
+  return true;
+}
+function cutInterRoad(t1,t2){
+  let cut=0;
+  for(const t of [t1,t2]){
+    if(!t||!t.interRoads) continue;
+    const other=t===t1?t2:t1;
+    const rec=t.interRoads[other.id]; if(!rec) continue;
+    for(const idx of rec.path){ if(S.roads&&S.roads[idx]){ S.roads[idx]=0; cut++; } }
+    delete t.interRoads[other.id];
+  }
+  if(cut>0) logEvent('جاده‌ی بین '+t1.name+' و '+t2.name+' در جنگ قطع شد — تا صلح، جاده‌ای نیست.','bad');
+  return cut;
+}
+/* v5: طمع زمین — سازنده‌ی بیکار، وقتی چوبِ مازاد هست، خانه‌های بی‌صاحبِ چسبیده به سرزمین را می‌گیرد؛ به‌سمت منابع و رقیب، و دورتر از خانه گران‌تر */
+function claimStep(a,t,dt,speed){
+  if(!t||t.stock.wood<5||tribeTiles(t)>=territoryCap(t)) return false;
+  t.claimCd=Math.max(0,(t.claimCd||0)-dt);
+  if(t.claimCd>0) return false;
+  if(a.claimIdx==null){
+    const rival=nearestRival(t);
+    const frontier=[];
+    for(let i=0;i<S.tiles.length;i++){
+      if(S.tiles[i]!==0) continue;
+      const tx=i%TW, ty=Math.floor(i/TW);
+      let adj=false;
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=tx+dx,ny=ty+dy; if(nx>=0&&ny>=0&&nx<TW&&ny<TH&&S.tiles[ny*TW+nx]===t.id){ adj=true; break; } }
+      if(adj) frontier.push(i);
+    }
+    let best=null,bd=-Infinity;
+    for(const i of frontier){
+      const tx=i%TW, ty=Math.floor(i/TW), cx=tx*TILE+TILE/2, cy=ty*TILE+TILE/2;
+      const dHome=Math.hypot(cx-t.home.x,cy-t.home.y);
+      if(dHome>800) continue;
+      let res=0; for(const tr of S.trees){ if((tr.x-cx)*(tr.x-cx)+(tr.y-cy)*(tr.y-cy)<100*100) res++; } for(const st of S.stones){ if((st.x-cx)*(st.x-cx)+(st.y-cy)*(st.y-cy)<100*100) res++; } for(const f of S.foods){ if((f.x-cx)*(f.x-cx)+(f.y-cy)*(f.y-cy)<100*100) res++; }
+      let toward=0; if(rival){ const vx=rival.o.home.x-t.home.x, vy=rival.o.home.y-t.home.y, vl=Math.hypot(vx,vy)||1; toward=((cx-t.home.x)*vx+(cy-t.home.y)*vy)/vl; }
+      const score=res*40+toward*0.15-dHome*0.05;
+      if(score>bd){ bd=score; best={x:cx,y:cy,idx:i}; }
+    }
+    if(!best) return false;
+    a.claimTx=best.x; a.claimTy=best.y; a.claimIdx=best.idx;
+  }
+  a.goal='تصاحب زمین';
+  if(!moveToward(a,a.claimTx,a.claimTy,dt,speed)) return true;
+  if(S.tiles[a.claimIdx]!==0){ a.claimTx=null; a.claimTy=null; a.claimIdx=null; return true; }
+  const cost=claimCostAt(t,a.claimTx,a.claimTy);
+  if(t.stock.wood<cost.wood||t.stock.stone<cost.stone){ a.claimTx=null; a.claimTy=null; a.claimIdx=null; return false; }
+  a.workT=(a.workT||0)+dt;
+  if(a.workT>=2){
+    a.workT=0; t.stock.wood-=cost.wood; t.stock.stone-=cost.stone; t.claimCd=10;
+    claimTile(a.claimIdx%TW,Math.floor(a.claimIdx/TW),t.id);
+    landProvocation(t,a.claimTx,a.claimTy);
+    a.claimTx=null; a.claimTy=null; a.claimIdx=null;
+  }
+  return true;
+}
+/* v5: فرسودگی ساختمان‌ها — سازنده‌ها آسیب‌دیده‌ترین ساختمان قبیله (زیر ۵۰٪) را اول تعمیر می‌کنند؛ تعمیر از ساختن تازه ارزان‌تر است */
+const DECAY_RATE={tent:0.1,house:0.03,farm:0.04,pasture:0.04,school:0.02,university:0.015,hospital:0.02,market:0.025,workshop:0.03,wall:0.012,tower:0.012,barracks:0.02,command:0.015,armory:0.02,bakery:0.03,granary:0.025,smithy:0.03,butcher:0.035,library:0.02,clinic:0.02,inn:0.03,castle:0.008};
+function decayRate(b){ let r=DECAY_RATE[b.type]||0.025; if(!b.tribeId||b.ruin) r*=2.5; return r; } // بی‌صاحب ۲٫۵ برابر سریع‌تر می‌پوسد
+function repairStep(a,t,dt,speed){
+  if(!t) return false;
+  let worst=null,worstFrac=1;
+  for(const b of S.buildings){
+    if(b.tribeId!==t.id||b.progress<100) continue;
+    const frac=(b.hp??b.maxHp)/(b.maxHp||60);
+    if(frac<0.5&&frac<worstFrac){ worst=b; worstFrac=frac; }
+  }
+  if(!worst) return false;
+  if(t.stock.wood<2||t.stock.stone<1) return false; // مصالح نیست — تعمیر نمی‌شود
+  a.goal='تعمیر '+BUILDINGS[worst.type].name;
+  if(!moveToward(a,worst.x,worst.y,dt,speed)) return true;
+  a.workT=(a.workT||0)+dt;
+  if(a.workT>=2){
+    a.workT=0;
+    if(t.stock.wood<2||t.stock.stone<1) return true;
+    t.stock.wood-=2; t.stock.stone-=1;
+    worst.hp=Math.min(worst.maxHp,(worst.hp??worst.maxHp)+Math.round(worst.maxHp*0.25));
+    if(worst.hp>=worst.maxHp*0.5) floater(worst.x,worst.y-16,'تعمیر شد','#a7f3d0');
+  }
+  return true;
+}
 function builderStep(a,t,dt,speed,know){
+  if(t&&repairStep(a,t,dt,speed)) return true; // v5: تعمیر اول — ساختمان آسیب‌دیده اولویت دارد
   const job=S.buildQueue.find(q=>q.tribeId===(t?t.id:null));
-  if(!job){ if(t&&roadStep(a,t,dt,speed)) return true; return gatherStep(a,t,dt,speed,know); }
+  if(!job){ if(t&&roadStep(a,t,dt,speed)) return true; if(t&&interRoadStep(a,t,dt,speed)) return true; if(t&&claimStep(a,t,dt,speed)) return true; return gatherStep(a,t,dt,speed,know); }
   const b=S.buildings.find(x=>x.id===job.buildingId);
   if(!b){ S.buildQueue.splice(S.buildQueue.indexOf(job),1); return true; }
   a.goal='ساختن '+BUILDINGS[b.type].name;
@@ -2872,7 +3074,7 @@ function traderStep(a,t,dt,speed,know){
         }
         if(done) S.tradeCount=(S.tradeCount||0)+1;
       }
-      a.tradeDest=null; a.tradeT=12; return true;
+      a.tradeDest=null; a.tradeT=hasInterRoad(t,dest)?6:12; return true; // v5: با جاده‌ی مشترک، بازرگان زودتر برمی‌گردد — تجارت بیشتر
     }
   }
   const arr=moveToward(a,market.x,market.y,dt,speed);
@@ -2880,8 +3082,9 @@ function traderStep(a,t,dt,speed,know){
   if(a.tradeT>0){ a.goal='در بازار'; return true; }
   a.goal='تجارت در بازار';
   a.tradeT=8;
-  // اول: تجارت بین‌قبیله‌ای با قبیله‌ای که کالا را لازم دارد یا سکه دارد
-  for(const o of S.tribes){
+  // اول: تجارت بین‌قبیله‌ای با قبیله‌ای که کالا را لازم دارد یا سکه دارد — قبیله‌ی جاده‌دار اول است
+  const tradeCands=[...S.tribes].sort((x,y)=>((hasInterRoad(t,y)?1:0)-(hasInterRoad(t,x)?1:0)));
+  for(const o of tradeCands){
     if(o.id===t.id||!hasTech(o,'money')) continue;
     const r=t.relations[o.id]||0;
     if(r<=0&&!isAlly(t,o)) continue;
@@ -3120,6 +3323,7 @@ function animalsTick(dt){
 function civTick(dt){
   /* v5 (tiles): فاصله‌ی سرزمین‌ها هر ۵ ثانیه کش می‌شود؛ برج‌ها و قلعه‌ها از قلمرو دفاع می‌کنند */
   S.terrDistT=(S.terrDistT||0)-dt; if(S.terrDistT<=0){ S.terrDistT=5; updateTerritoryDistances(); }
+  S.borderT=(S.borderT||0)-dt; if(S.borderT<=0){ S.borderT=5; borderTensionTick(5); } // v5: تنش مرزی و خانه‌های مورد مناقشه هر ۵ ثانیه
   territoryDefenseTick(dt);
   /* v4: رویش درخت متعادل‌تر — آهسته‌تر، با نهال که باید بالغ شود؛ چوب واقعاً محدود می‌شود */
   if(S.trees.length<165&&Math.random()<dt*0.12) S.trees.push({x:rand(40,WORLD_W-40),y:rand(40,WORLD_H-40),amount:1,kind:'tree',sapling:true});
@@ -3147,10 +3351,12 @@ function civTick(dt){
     for(const o of S.tribes){ if(o.id!==t.id){ const r=t.relations[o.id]||0; const rate=r>=0?0.001:0.0002;
       // v5 (tiles): اصطکاک مرزی — وقتی سرزمین‌ها به هم می‌رسند، رابطه به‌جای صفر به سمت ۲۵- می‌رود
       const overlap=territoryDist(t,o)<60;
-      const target=overlap?-25:0;
+      let target=overlap?-25:0;
+      if(hasInterRoad(t,o)) target=Math.max(target,5); // جاده‌ی مشترک اعتماد می‌سازد — رابطه به سمت ۵+ می‌رود
       t.relations[o.id]=r+(target-r)*rate*dt; } }
     t.warFatigue=clamp((t.warFatigue||0)-dt*0.1,0,100);
     diplomacyTick(t,dt);
+    interRoadTick(t,dt); // v5: جاده‌ی بین‌قبیله‌ای با قبیله‌ی دوست
     needsTick(t,dt);
     satisfactionTick(t,dt); // دربار، رضایت، اعتراض و انقلاب
     collapseTick(t,dt); // قبیله‌ی خیلی کوچک یا ناتوان — با مهلت یک‌روزه
@@ -3194,6 +3400,11 @@ function civTick(dt){
   // نهال‌ها آهسته رشد می‌کنند (حدود ۸۰ ثانیه تا بلوغ)؛ ساختمان نیمه‌کاره‌ی رها شده منابعش را پس می‌دهد
   for(const tr of S.trees) if(tr.sapling&&tr.amount<5){ tr.amount=Math.min(5,tr.amount+dt*0.05); if(tr.amount>=5) tr.sapling=false; }
   for(const b of [...S.buildings]){
+    // v5: فرسودگی — ساختمانِ کامل‌شده آهسته جان می‌دهد (چوبی سریع‌تر از سنگی، بی‌صاحب سریع‌تر)؛ اگر به صفر برسد، فرو می‌ریزد
+    if(b.progress>=100&&b.type!=='tent'){
+      b.hp=Math.max(0,(b.hp??b.maxHp)-decayRate(b)*dt);
+      if(b.hp<=0){ collapseBuilding(b); continue; }
+    }
     // v5: چادر فقط ۲ روز عمر می‌کند — بعدش فرسوده می‌شود و خانواده دوباره بی‌سرپناه است (مگر خانه گرفته باشد)
     if(b.type==='tent'&&b.progress>=100&&S.elapsed-(b.createdAt||0)>2*S.settings.dayLength){
       S.buildings.splice(S.buildings.indexOf(b),1);
@@ -3456,6 +3667,7 @@ function declareWar(t1,t2,big){
   const w2=tribeMembers(t2).filter(a=>a.job==='warrior'||a.job==='guard');
   if(w1.length<1||w2.length<1){ logEvent('جنگ اعلام شد ولی یکی از قبایل جنگجوی کافی ندارد — فقط یورش‌های کوچک ادامه دارد.','bad'); return null; }
   t1.relations[t2.id]=-60; t2.relations[t1.id]=-60;
+  cutInterRoad(t1,t2); // v5: با شروع جنگ، جاده‌ی بین دو قبیله قطع می‌شود
   const size=big?Math.min(12,Math.max(3,Math.min(w1.length,w2.length))):Math.min(5,Math.max(2,Math.min(w1.length,w2.length)));
   const bx=(t1.home.x+t2.home.x)/2, by=(t1.home.y+t2.home.y)/2;
   const b={id:S.nextBattleId++,t1:t1.id,t2:t2.id,x:bx,y:by,big:!!big,s1:[],s2:[],t:0,state:'march'};
@@ -3489,6 +3701,7 @@ function endBattle(b,winnerId){
     win.relations[lose.id]=clamp((win.relations[lose.id]||0)-15,-100,100);
     lose.relations[win.id]=clamp((lose.relations[win.id]||0)-15,-100,100);
     logEvent(win.name+' در نبرد پیروز شد و '+fa(lootF)+' غذا و '+fa(lootW)+' چوب غنیمت گرفت.','bad');
+    transferWarSpoils(win,lose); // v5: برنده‌ی جنگ زمین هم می‌گیرد — نوار مرزی + چند خانه‌ی بازنده
     for(const a of tribeMembers(win)) a.loyalty=clamp(a.loyalty+3,0,100);
     for(const a of tribeMembers(lose)) a.loyalty=clamp(a.loyalty-3,0,100);
   }
@@ -3646,7 +3859,7 @@ function renderCiv(){
     +'<div class="court">'+Object.keys(COURT_ROLES).map(role=>{ const cm=courtMember(t,role); return '<div class="job-row"><span>'+COURT_ROLES[role].name+' <small>('+COURT_ROLES[role].effect+')</small></span><b>'+(cm?cm.name:'—')+'</b><button class="btn btn-glass" type="button" data-civ="court:'+role+'">جایگزین</button></div>'; }).join('')+'</div>'
     +'<p class="note">'+icon('users')+' مزایای زندگی قبیله‌ای: خوردن از انبار مشترک وقتی گرسنه‌ای، محافظت نگهبانان و جنگجویان، درمان درمانگر و بهبود سریع‌تر با بیمارستان، خانه و مزرعه‌ی مشترک، تجارت در بازار. بی‌قبیله‌ها هیچ‌کدام را ندارند — خودشان همه‌چیز را جمع می‌کنند. ظرفیت پذیرش: '+fa(tribeCap(t))+' نفر (با خانه بیشتر می‌شود).</p>'
     +'<h4>'+icon('land')+' سرزمین</h4>'
-    +'<p class="note">'+icon('land')+' سرزمین: <b>'+fa(tribeTiles(t))+' خانه</b> — با ساختن جاده، برج و قلعه گسترش می‌یابد؛ سرزمینِ قبیله‌ی سقوط‌کرده به برنده می‌رسد. ساختمان‌ها فقط درون سرزمین خودشان ساخته می‌شوند.</p>'
+    +'<p class="note">'+icon('land')+' سرزمین: <b>'+fa(tribeTiles(t))+' خانه</b> از سقف '+fa(territoryCap(t))+' خانه — سازنده‌ها وقتی چوبِ مازاد هست زمین می‌گیرند (به‌سمت منابع و رقیب)؛ هرچه دورتر از خانه، گران‌تر. سرزمینِ قبیله‌ی سقوط‌کرده به برنده می‌رسد. ساختمان‌ها فقط درون سرزمین خودشان ساخته می‌شوند.'+(function(){ const nr=nearestRival(t); if(!nr) return ''; const ten=(t.borderTension||{})[nr.o.id]||0, cont=(t.contested||{})[nr.o.id]||0; return ' تنش مرزی با <b>'+nr.o.name+'</b>: ٪'+fa(Math.round(ten))+(cont?' — '+fa(cont)+' خانه‌ی مورد مناقشه':'')+(hasInterRoad(t,nr.o)?' — جاده‌ای بینشان هست':''); })()+'</p>'
     +'<h4>'+icon('war')+' جنگ و دیپلماسی</h4>'
     +'<p class="note">تمایل به جنگ: ٪'+fa(Math.round(warAppetite(t)*100))+(warAppetite(t)>0.6?' — رهبر جنگ‌طلب است و کینه‌ها را فراموش نمی‌کند':warAppetite(t)<0.35?' — رهبر صلح‌طلب است':' — رهبر میانه‌رو است')+' • خستگی از جنگ: ٪'+fa(Math.round(t.warFatigue||0))+((t.warFatigue||0)>45?' — قبیله خسته از جنگ است و به صلح تمایل دارد':'')+(function(){ const nr=nearestRival(t); if(!nr) return ' • هنوز رقیبی نیست'; return ' • نزدیک‌ترین رقیب: <b>'+nr.o.name+'</b> — فاصله‌ی سرزمین‌ها '+fa(Math.round(territoryDist(t,nr.o)))+' پیکسل'+(distBonus(t)>0?' — نزدیکی مرز +٪'+fa(Math.round(distBonus(t)*100))+' تمایل به جنگ':''); })()+'</p>'
     +'<p class="note">متحدان: '+((t.allies||[]).map(id=>{ const at=tribeById(id); return at?at.name:'؟'; }).join('، ')||'هیچ متحدی نیست — رابطه بالای ۶۰ یعنی می‌شود پیمان بست')+'</p>'
@@ -3663,6 +3876,8 @@ function renderCiv(){
       return '<div class="rel-row"><span><span class="tribe-dot" style="background:'+o.color+'"></span>'+o.name+'</span>'
       +'<div class="bar" style="flex:1"><i style="width:'+((r+100)/2)+'%;background:'+(r<-50?'#fb7185':r>50?'#34d399':'#f59e0b')+'"></i></div>'
       +'<b>'+(r>0?'+':'')+fa(Math.round(r))+'</b>'
+      +(((t.borderTension||{})[o.id]||0)>0?'<span class="sub">تنش مرزی ٪'+fa(Math.round((t.borderTension||{})[o.id]))+(((t.contested||{})[o.id]||0)?' • '+fa((t.contested||{})[o.id])+' خانه‌ی مورد مناقشه':'')+'</span>':'')
+      +(hasInterRoad(t,o)?'<span class="sub">جاده‌ی مشترک</span>':'')
       +(truce?'<span class="sub">آتش‌بس تا روز '+fa(t.truce[o.id])+'</span>':'')
       +(allied?'<span class="sub">'+icon('alliance')+' متحد</span>':'')
       +'<button class="btn btn-danger" type="button" data-civ="rel:'+o.id+':war">'+icon('war')+' جنگ</button>'
@@ -3672,7 +3887,8 @@ function renderCiv(){
       +(atWar?'<button class="btn btn-glass" type="button" data-civ="rel:'+o.id+':tribute">'+icon('coin')+' باج (۱۵ سکه)</button>':'')
       +'</div>'; }).join('')
     +'<h4>'+icon('builder')+' ساختمان‌های '+t.name+'</h4>'
-    +'<div class="build-owned">'+(S.buildings.filter(b=>b.tribeId===t.id).map(b=>'<span class="pill">'+icon(BUILDINGS[b.type].icon)+' '+BUILDINGS[b.type].name+' '+((b.level||1)>1?'سطح '+fa(b.level)+' ':'')+(b.progress>=100?((b.hp!=null&&b.hp<b.maxHp)?'آسیب‌دیده ':'')+icon('check'):'٪'+fa(Math.round(b.progress)))+'</span>').join('')||'<span style="color:var(--muted);font-size:12px">هنوز ساختمانی نیست — از پایین یکی بساز.</span>')+'</div>';
+    +'<div class="build-owned">'+(S.buildings.filter(b=>b.tribeId===t.id).map(b=>'<span class="pill">'+icon(BUILDINGS[b.type].icon)+' '+BUILDINGS[b.type].name+' '+((b.level||1)>1?'سطح '+fa(b.level)+' ':'')+(b.progress>=100?((b.hp!=null&&b.hp<b.maxHp)?'آسیب‌دیده ':'')+icon('check'):'٪'+fa(Math.round(b.progress)))+'</span>').join('')||'<span style="color:var(--muted);font-size:12px">هنوز ساختمانی نیست — از پایین یکی بساز.</span>')+'</div>'
+    +(function(){ const needRep=S.buildings.filter(b=>b.tribeId===t.id&&b.progress>=100&&(b.hp??b.maxHp)<(b.maxHp||60)*0.5); return needRep.length?'<p class="note">نیاز به تعمیر: '+needRep.map(b=>BUILDINGS[b.type].name+' (٪'+fa(Math.round(((b.hp??b.maxHp)/(b.maxHp||60))*100))+' جان)').join('، ')+' — سازنده‌ها خودشان می‌روند سراغشان؛ یا روی ساختمان بزن و «تعمیر» را بزن.</p>':''; })();
   $('#techTree').innerHTML=TECHS.map(tc=>{
     const done=!!t.techs[tc.id];
     const avail=!done&&tc.requires.every(r=>t.techs[r]);
@@ -4177,6 +4393,13 @@ function drawBuilding(b){
     if(b.type==='command'){ ctx.fillStyle='#fde047'; ctx.beginPath(); ctx.arc(x,y+1,3,0,Math.PI*2); ctx.fill(); }
     if(b.type==='barracks'){ ctx.fillStyle='#1f2937'; ctx.fillRect(x-4,y+1,8,9); }
   }
+  // v5: ساختمانِ آسیب‌دیده روی نقشه معلوم است — تیره‌تر + ترک کهربایی
+  const frac=(b.hp??b.maxHp)/(b.maxHp||60);
+  if(b.progress>=100&&frac<0.5){
+    ctx.fillStyle='rgba(0,0,0,0.28)'; ctx.fillRect(x-13,y-18,26,30);
+    ctx.strokeStyle='#fbbf24'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(x-6,y-12); ctx.lineTo(x-2,y-4); ctx.lineTo(x-6,y+4); ctx.moveTo(x+4,y-10); ctx.lineTo(x+7,y-2); ctx.lineTo(x+3,y+6); ctx.stroke();
+  }
 }
 /* سیلوئت برداری حیوانات */
 function drawAnimal(an){
@@ -4577,7 +4800,7 @@ function updateBuildingCard(){
   const pr=$('#bldProgRow'); if(pr) pr.style.display=b.progress>=100?'none':'grid';
   $('#bldProg').style.width=(b.progress||0)+'%';
   $('#bldProgTxt').textContent='٪'+fa(Math.round(b.progress||0));
-  $('#bldInfo').textContent='وضعیت: '+(b.progress>=100?'ساخته شده':'در حال ساخت ('+fa(Math.round(b.progress||0))+'٪)')+' • سطح '+fa(b.level||1)+' از ۳';
+  $('#bldInfo').textContent='وضعیت: '+(b.progress>=100?'ساخته شده':'در حال ساخت ('+fa(Math.round(b.progress||0))+'٪)')+' • سطح '+fa(b.level||1)+' از ۳'+(b.progress>=100&&hp<max*0.5?' • نیاز به تعمیر! سازنده‌ها خودشان می‌آیند':'');
   $('#bldContent').textContent=buildingContents(b);
   const fam=b.ownerFamilyId?familyById(b.ownerFamilyId):b.renterFamilyId?familyById(b.renterFamilyId):null;
   $('#bldOwner').textContent=fam?('مالک: خانواده‌ی '+fa(fam.members.length)+' نفره'+(b.renterFamilyId?' (اجاره‌ای)':'')):('مالک: '+(t?t.name:'—'));
@@ -4676,6 +4899,9 @@ const GUIDE=[
  {t:'اتحاد قبایل',ic:'alliance',d:'وقتی رابطه‌ی دو قبیله بالای ۶۰ شد، می‌توانند پیمان اتحاد ببندند (دکمه‌ی «اتحاد» در تب تمدن، یا خود رهبرها پیشنهاد می‌دهند). متحدان هرگز به هم حمله نمی‌کنند، تجارتشان ۱۰٪ بهتر است، و اگر یکی حمله شود، دیگری جنگجو به کمک می‌فرستد.',ex:'مثال: دو قبیله‌ی دوست را پیدا کن، رابطه‌شان را با هدیه بالا ببر، بعد «اتحاد» را بزن؛ بعد به یکی‌شان اعلام جنگ کن و ببین متحدش چطور به کمک می‌آید.'},
  {t:'محاصره و اشغال',ic:'siege',d:'در جنگ، جنگجوها فقط در میدان نمی‌جنگند؛ به خانه‌ی دشمن می‌روند و ساختمان‌هایش را می‌زنند. هر ساختمان جان (HP) دارد؛ دیوار اول می‌شکند، بعد خانه و مزرعه. خانه‌ی ویران یعنی خانواده‌ای بی‌خانه. اگر قبیله‌ای همه‌ی ساختمان‌هایش را از دست بدهد یا فقط ۲ نفر بماند، سقوط می‌کند: انبار و سرزمینش به برنده می‌رسد و بازماندگان به برنده می‌پیوندند.',ex:'مثال: روی یک ساختمان بزن تا جان و سطحش را ببینی؛ ساختمان آسیب‌دیده را می‌شود تعمیر یا ارتقا داد.'},
  {t:'سرزمین و مالکیت زمین',ic:'land',d:'جهان شبکه‌ی خانه‌های ۵۰ پیکسلی است و سرزمین هر قبیله، مجموعه‌ی خانه‌هایی است که مالکش است. قبیله با خانه‌های دور خانه‌اش شروع می‌کند و با ساختن ساختمان (هر ساختمان کامل‌شده خانه‌های دور خودش را می‌گیرد)، جاده (سازنده خانه‌به‌خانه از مرز جلو می‌رود و حرکت روی جاده سریع‌تر است)، برج (خانه‌های دورش + دفاع از سرزمین) و قلعه (شعاع بزرگ + قلب آبادی تازه) گسترش می‌یابد. ساختمان‌ها فقط درون سرزمین خودشان ساخته می‌شوند و برداشت منابع از سرزمین قبیله‌ی دیگر کینه می‌سازد. هرچه سرزمین دو قبیله به هم نزدیک‌تر باشد، تمایلشان به جنگ بیشتر است.',ex:'مثال: در تب «تمدن» شمار خانه‌های سرزمین و فاصله‌ی سرزمین‌ها تا نزدیک‌ترین رقیب را ببین؛ دو قبیله‌ی همسایه زودتر با هم درگیر می‌شوند.'},
+ {t:'طمع زمین و جنگ بر سر زمین',ic:'land',d:'قبیله‌ها زمین می‌خواهند: وقتی چوبِ مازاد هست، سازنده‌های بیکار خانه‌های بی‌صاحبِ چسبیده به سرزمین را می‌گیرند — به‌سمت منابع (درخت، سنگ، غذا) و به‌سمت رقیب؛ هرچه دورتر از خانه، گران‌تر (چوب بیشتر، سنگ اضافه). سرزمین سقف هم دارد: با جمعیت و برج‌ها بالا می‌رود، پس یک قبیله نمی‌تواند نقشه را رایگان رنگ کند. وقتی سرزمین دو قبیله به هم می‌رسد، تنش مرزی بالا می‌رود (در تب تمدن دیده می‌شود) و خانه‌های مورد مناقشه کینه می‌سازند؛ تصاحب زمین چسبیده به مرز رقیب، تحریک است (+۳ کینه). تنش بالا تمایل به جنگ را بیشتر می‌کند و برنده‌ی جنگ، نوار مرزی و چند خانه‌ی بازنده را می‌گیرد — و بازنده کینه‌ی انتقام می‌گیرد.',ex:'مثال: دو قبیله‌ی همسایه را تماشا کن؛ تنش مرزی‌شان در تب تمدن بالا می‌رود و اگر جنگ شود، برنده زمین می‌گیرد.'},
+ {t:'فرسودگی ساختمان‌ها و تعمیر',ic:'home',d:'هر ساختمان آهسته فرسوده می‌شود — چوبی‌ها سریع‌تر از سنگی‌ها، دیوار و برج کمی بیشتر سایش می‌برند، و ساختمانِ بی‌صاحب ۲٫۵ برابر سریع‌تر می‌پوسد. سازنده‌ها وقتی ساختمانی زیر نصف جانش باشد، خودشان اول می‌روند سراغ تعمیر (۲ چوب و ۱ سنگ برای ۲۵٪ جان — خیلی ارزان‌تر از ساختن تازه). ساختمانِ آسیب‌دیده روی نقشه تیره‌تر است و ترک کهربایی دارد، و در تب تمدن فهرست «نیاز به تعمیر» معلوم است. اگر جان ساختمان به صفر برسد، فرو می‌ریزد: اگر خانه بود، خانواده‌اش بی‌خانه می‌شود و دنبال خانه می‌گردد؛ اگر برج یا قلعه بود، سرزمین دورش پس گرفته می‌شود.',ex:'مثال: روی یک ساختمان آسیب‌دیده بزن — در کارتش «نیاز به تعمیر!» را ببین و دکمه‌ی تعمیر را بزن (۵ چوب و ۳ سنگ، +۶۰٪ جان).'},
+ {t:'جاده‌های بین‌قبیله‌ای',ic:'trade',d:'دو قبیله‌ی دوست (رابطه بالای صفر) — به‌ویژه متحدان و شریک‌های تجاری — جاده‌ای بین سرزمین‌هایشان می‌کشند: سازنده‌های قبیله‌ی آغازگر خانه‌به‌خانه جاده می‌سازند (هر خانه ۱ چوب) تا دو سرزمین به هم وصل شوند. روی جاده حرکت ۱٫۳ برابر سریع‌تر است، بازرگانان بینشان بیشتر رفت‌وآمد می‌کنند و خودِ جاده آهسته رابطه را بهتر می‌کند. قبیله‌های دشمن جاده نمی‌سازند؛ و وقتی جنگ شروع شود، جاده‌ی بینشان قطع می‌شود و تا صلح دوباره ساخته نمی‌شود.',ex:'مثال: دو قبیله‌ی دوستِ نزدیک را پیدا کن و جاده‌ی بینشان را در نقشه تماشا کن؛ بعد به یکی‌شان اعلام جنگ کن و ببین جاده چطور قطع می‌شود.'},
  {t:'چرا زندگی قبیله‌ای؟',ic:'users',d:'زندگی قبیله‌ای بهتر است چون مزایایش واقعی است: عضو قبیله وقتی گرسنه است از انبار مشترک غذا می‌خورد، نگهبانان و جنگجویان از او محافظت می‌کنند، درمانگر فقط هم‌قبیله‌ای‌ها را درمان می‌کند و بیمارستان بهبود را سریع‌تر می‌کند، خانه و مزرعه و مدرسه و بازار مشترک است. بی‌قبیله‌ها هیچ‌کدام را ندارند و خودشان همه‌چیز را جمع می‌کنند — برای همین بزرگسالان بی‌قبیله خودشان به نزدیک‌ترین قبیله می‌روند و درخواست پیوستن می‌دهند، و قبیله تا وقتی ظرفیت (با خانه بیشتر می‌شود) و نیاز به نیروی کار دارد، راحت می‌پذیرد. ترک قبیله هم آسان نیست: وفاداری آهسته کم می‌شود و فقط نارضایتی خیلی زیاد یا اختلاف شدید با رهبر کسی را بیرون می‌کشد — مگر اینکه قبیله در حال فروپاشی باشد.',ex:'مثال: یک بی‌قبیله را دنبال کن؛ خودش به سوی نزدیک‌ترین قبیله می‌رود و می‌پیوندد. در کارت هر فرد، مدت عضویتش در قبیله را ببین.'},
  {t:'دربار، رضایت، اعتراض و انقلاب',ic:'crown',d:'رهبر قبیله روی نقشه تاج طلایی دارد. رهبر از میان اعضا چهار وزیر برمی‌گزیند: مشاور (پژوهش ۲۵٪ سریع‌تر)، وزیر (برداشت و محصول مزرعه ۱۵٪ بیشتر)، سردار (قدرت جنگی جنگجویان ۱۵٪ بیشتر) و خزانه‌دار (تجارت و فروش به کاروان ۱۰٪ سودآورتر). وزیرِ مرده یا رفته خودبه‌خود جایگزین می‌شود و خدا هم از تب تمدن می‌تواند هر نقش را با دکمه‌ی «جایگزین» عوض کند. رضایت اعضا از رهبر از غذا و سکه و برد و باخت جنگ و جشنواره و ساختمان تازه و مرگ‌ها تغذیه می‌شود و آهسته حرکت می‌کند. اگر رضایت میانگین مدت‌ها پایین بماند، اعتراض شروع می‌شود (معترضان دور خانه جمع می‌شوند و کار نمی‌کنند) و اگر بدتر شود، انقلاب: شورشیان با جنگجویان وفادار و دربار رهبر می‌سنجند — یا رهبر تازه‌ای می‌آید و رهبر پیشین تبعید یا کشته می‌شود، یا انقلاب سرکوب می‌شود و بعضی معترضان زندانی یا کشته می‌شوند. قبیله‌ی خوب تقریباً هیچ‌وقت شورش نمی‌کند.',ex:'مثال: به قبیله‌ای قحطی بده (خشکسالی یا باران غذا را قطع کن) و رضایتش را در تب تمدن تماشا کن؛ اگر خیلی پایین بماند، اعتراض شروع می‌شود.'},
  {t:'فروپاشی قبیله',ic:'death',d:'قبیله با کمتر از ۸ بزرگسال وفادار نزدیک ساخته نمی‌شود — رهبر تنها با ۲–۳ پیرو قبیله نمی‌سازد. و قبیله‌ای که کوچک شود (کمتر از ۴ بزرگسال) یا مدت‌ها غذای کافی نداشته باشد (انبار خالی، بدون مزرعه و بدون غذای وحشی نزدیک خانه) یا بی‌دفاع بماند (نه جنگجو نه نگهبان، در حالی که دشمن یا حیوان وحشی هست) اول هشدار «در آستانه‌ی فروپاشی» می‌گیرد و اگر یک روز کامل اوضاع درست نشد، از هم می‌پاشد: اگر دشمن در حال جنگ یا نزدیک‌ترین قبیله باشد، سرزمین و انبار و بازماندگان به او می‌رسد؛ وگرنه بازماندگان به قبیله‌ی دوست نزدیک می‌پیوندند یا بی‌قبیله می‌شوند، ساختمان‌ها بی‌صاحب می‌مانند و سرزمین بی‌صاحب می‌شود.',ex:'مثال: اعضای یک قبیله را با صاعقه کم کن و ببین اول هشدار می‌آید و بعد از یک روز قبیله از هم می‌پاشد.'},
@@ -4686,7 +4912,7 @@ const GUIDE=[
  {t:'مغازه‌های شغلی',ic:'market',d:'هر شغل یک ساختمان مخصوص دارد: نانوایی (آشپز دو برابر سریع‌تر می‌پزد)، انبار غله (سقف غذای قبیله +۱۵۰)، آهنگری (آهنگر دو برابر سریع‌تر می‌سازد)، قصابی (هر شکار +۱۰ غذا)، کتابخانه (پژوهش ۱٫۵ برابر)، درمانگاه (درمان ۱٫۵ برابر سریع‌تر) و مهمانخانه (روسپی مشتری بیشتر و دستمزد بیشتر دارد).',ex:'مثال: وقتی «سفالگری» کشف شد، نانوایی و انبار غله بساز؛ وقتی «پول» آمد، مهمانخانه بساز.'},
  {t:'نیازها و توسعه',ic:'scale',d:'هر قبیله تراز نیازهایش را می‌سنجد: غذا، چوب و سنگ در روز چقدر کم یا زیاد می‌شوند. کمبود غذا کشاورز و مزرعه می‌آورد، کمبود چوب چوب‌بر، کمبود سنگ معدنچی؛ مازاد، کارگرها را به پژوهش و صنعت می‌برد. تراز را در تب تمدن ببین.',ex:'مثال: قبیله‌ای که غذایش منفی است، سهمیه‌ی کشاورزش خودبه‌خود بالا می‌رود؛ اگر مزرعه ندارد، مزرعه می‌سازد.'},
  {t:'انبار و خرج کردن',ic:'trade',d:'قبیله‌ها دیگر مازاد را انبار نمی‌کنند: وقتی چوب و سنگ زیاد شد، اول زیرساخت می‌سازند، بعد ساختمان‌ها را ارتقا می‌دهند، بعد خانه و مزرعه‌ی بیشتر، و اگر باز هم اضافه ماند، مازاد را به کاروان‌های عبوری می‌فروشند و سکه می‌گیرند. همه‌ی این خرج‌ها در دفتر رویدادها ثبت می‌شود.',ex:'مثال: در دفتر رویدادها دنبال «انبار دارد خرج می‌شود» بگرد تا ببینی هر قبیله مازادش را کجا خرج کرده است.'},
- {t:'حرکت و زوم نقشه',ic:'map',d:'جهان ۱۶۰۰ در ۱۲۰۰ است و بزرگ‌تر از صفحه است: با کشیدن انگشت یا موس نقشه جابه‌جا می‌شود، با پینچ دو انگشت یا چرخ موس زوم می‌شود.',ex:'مثال: دکمه‌های ＋ و － و مرکز بالای نقشه را بزن؛ روی مینی‌مپ پایین نقشه بزن تا دوربین همان‌جا بپرد. وقتی موجودی را دنبال می‌کنی، دوربین روی او قفل می‌شود.'},
+ {t:'حرکت و زوم نقشه',ic:'map',d:'جهان ۲۴۰۰ در ۱۸۰۰ است و بزرگ‌تر از صفحه است: با کشیدن انگشت یا موس نقشه جابه‌جا می‌شود، با پینچ دو انگشت یا چرخ موس زوم می‌شود.',ex:'مثال: دکمه‌های ＋ و － و مرکز بالای نقشه را بزن؛ روی مینی‌مپ پایین نقشه بزن تا دوربین همان‌جا بپرد. وقتی موجودی را دنبال می‌کنی، دوربین روی او قفل می‌شود.'},
 ];
 function buildGuide(){
   const box=$('#guideList'); if(!box) return;
@@ -4789,7 +5015,19 @@ $$('.tab').forEach(t=>t.addEventListener('click',()=>{
   $$('.tab-page').forEach(p=>p.classList.remove('active'));
   $('#tab-'+t.dataset.tab).classList.add('active');
   $('#panel').classList.add('open');
+  t.scrollIntoView({behavior:'smooth',inline:'nearest',block:'nearest'}); // v5: تب فعال همیشه دیده شود
 }));
+// v5: چرخ موس روی ردیف تب‌ها آن را افقی می‌چرخاند (روی دسکتاپ که اسکرول‌بار باریک دیده می‌شود)؛
+// اگر تب‌ها به انتها رسیده باشند، چرخ به پنل می‌رسد و آن را عمودی می‌چرخاند. در RTL جهت scrollLeft برعکس است.
+const tabsEl=document.querySelector('.tabs');
+if(tabsEl) tabsEl.addEventListener('wheel',e=>{
+  if(Math.abs(e.deltaY)<=Math.abs(e.deltaX)||tabsEl.scrollWidth<=tabsEl.clientWidth) return;
+  const rtl=getComputedStyle(tabsEl).direction==='rtl';
+  const max=tabsEl.scrollWidth-tabsEl.clientWidth;
+  const pos=rtl?-tabsEl.scrollLeft:tabsEl.scrollLeft; // ۰ تا max در هر دو جهت
+  if((e.deltaY>0&&pos>=max)||(e.deltaY<0&&pos<=0)) return; // به انتها رسیده — بگذار پنل بچرخد
+  tabsEl.scrollLeft+=(rtl?-1:1)*e.deltaY; e.preventDefault();
+},{passive:false});
 $('#btnDisarm').addEventListener('click',disarm);
 $('#btnAdd10').addEventListener('click',()=>{ for(let i=0;i<10;i++) S.agents.push(makeAgent()); logEvent('۱۰ موجود تازه آفریده شدند.','god'); toast('۱۰ موجود اضافه شد'); });
 $('#btnAddFood').addEventListener('click',()=>{ for(let i=0;i<25;i++) spawnFood(); toast('۲۵ غذا ریخته شد'); });
@@ -4985,7 +5223,8 @@ $('#btnLoad').addEventListener('click',()=>{
       /* v4: فیلدهای دیپلماسی و نیازها */
       if(!t.allies) t.allies=[]; if(!t.grievance) t.grievance={}; if(!t.truce) t.truce={}; if(t.warFatigue===undefined) t.warFatigue=0; if(!t.needsBal) t.needsBal={food:0,wood:0,stone:0}; if(t.diplomacyT===undefined) t.diplomacyT=rand(0,10); if(t.needsT===undefined) t.needsT=0;
       /* v5: دربار، رضایت، اعتراض، انقلاب و فروپاشی */
-      if(!t.court) t.court={advisor:null,minister:null,general:null,treasurer:null}; if(t.warWins===undefined) t.warWins=0; if(t.warLosses===undefined) t.warLosses=0; if(t.recentDeaths===undefined) t.recentDeaths=0; if(t.lastBuiltT===undefined) t.lastBuiltT=0; if(t.protesting===undefined) t.protesting=false; if(t.protestT===undefined) t.protestT=0; if(t.revoltT===undefined) t.revoltT=0; if(t.protestCd===undefined) t.protestCd=0; if(t.revoltCd===undefined) t.revoltCd=0; if(t.collapseT===undefined) t.collapseT=0; if(t.collapseWarned===undefined) t.collapseWarned=false; if(t.collapseDue===undefined) t.collapseDue=false; if(t.collapseReason===undefined) t.collapseReason=''; }
+      if(!t.court) t.court={advisor:null,minister:null,general:null,treasurer:null}; if(t.warWins===undefined) t.warWins=0; if(t.warLosses===undefined) t.warLosses=0; if(t.recentDeaths===undefined) t.recentDeaths=0; if(t.lastBuiltT===undefined) t.lastBuiltT=0; if(t.protesting===undefined) t.protesting=false; if(t.protestT===undefined) t.protestT=0; if(t.revoltT===undefined) t.revoltT=0; if(t.protestCd===undefined) t.protestCd=0; if(t.revoltCd===undefined) t.revoltCd=0; if(t.collapseT===undefined) t.collapseT=0; if(t.collapseWarned===undefined) t.collapseWarned=false; if(t.collapseDue===undefined) t.collapseDue=false; if(t.collapseReason===undefined) t.collapseReason='';
+      if(!t.borderTension) t.borderTension={}; if(!t.contested) t.contested={}; if(!t.landGrudgeT) t.landGrudgeT={}; if(!t.interRoads) t.interRoads={}; if(t.claimCd===undefined) t.claimCd=0; if(t.interRoadT===undefined) t.interRoadT=0; }
     for(const b of S.buildings){ if(b.createdAt===undefined) b.createdAt=S.elapsed; if(b.ownerFamilyId===undefined) b.ownerFamilyId=null; if(b.renterFamilyId===undefined) b.renterFamilyId=null; if(b.hp===undefined){ b.maxHp=BUILDING_HP[b.type]||60; b.hp=b.maxHp; } if(b.level===undefined) b.level=1; }
     if(!S.settings.fertility) S.settings.fertility=1;
     if(d.geneRules) GEN_RULES=d.geneRules;
