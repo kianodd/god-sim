@@ -2868,6 +2868,7 @@ function nwPopSync(v){
 }
 $('#nwPopRange').addEventListener('input',()=>{ const v=clamp(+$('#nwPopRange').value||120,10,500); $('#nwPopRange').value=v; nwPopSync(v); });
 $('#nwPopNum').addEventListener('input',()=>nwPopSync(+$('#nwPopNum').value));
+$('#nwPopNum').addEventListener('focus',e=>{ if(e.target.select) e.target.select(); });
 $('#btnReset').addEventListener('click',()=>{ nwPopSync(nwPopVal()); $('#confirmBox').hidden=false; });
 $('#btnConfirmReset').addEventListener('click',()=>{
   $('#confirmBox').hidden=true;
