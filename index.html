@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 <header class="topbar">
@@ -44,8 +44,10 @@
       <div class="chip"><span class="chip-ico">💀</span><span class="chip-label">مرگ</span><b id="statDeaths">۰</b></div>
       <div class="chip"><span class="chip-ico">🧬</span><span class="chip-label">نسل میانگین</span><b id="statGen">۰</b></div>
       <div class="chip"><span class="chip-ico">⚔️</span><span class="chip-label">جنگ</span><b id="statFights">۰</b></div>
+      <div class="chip"><span class="chip-ico">🪵</span><span class="chip-label">چوب</span><b id="statWood">۰</b></div>
+      <div class="chip"><span class="chip-ico">🪙</span><span class="chip-label">سکه</span><b id="statCoins">۰</b></div>
     </div>
-    <div class="hint" id="hint">روی یک موجود بزن تا انتخابش کنی • دو بار بزن = باران غذا • با قدرت خدا روی زمین بزن</div>
+    <div class="hint" id="hint">بکش تا نقشه جابه‌جا شود • پینچ یا چرخ موس = زوم • روی موجود بزن تا انتخابش کنی • دو بار بزن = باران غذا</div>
     <div class="armed" id="armedBar" hidden>⚡ قدرت <b id="armedName"></b> آماده است — روی زمین بزن <button id="btnDisarm" type="button">لغو ✕</button></div>
 
     <article class="selected" id="selectedCard" hidden>
@@ -64,6 +66,10 @@
       <div class="sel-genotype" id="selGenotype"></div>
       <p class="sel-traits" id="selTraits"></p>
       <p class="sel-family" id="selFamily">—</p>
+      <p class="sel-civ" id="selCiv">—</p>
+      <div class="bar-row"><span>🎯 هدف</span><b id="selGoal" style="font-size:12px">—</b></div>
+      <div class="bar-row"><span>🧠 دانش</span><div class="bar"><i id="selKnow" class="age" style="width:0%"></i></div><b id="selKnowTxt">٪۰</b></div>
+      <label class="sel-job">💼 شغل <select id="selJob"></select></label>
       <div class="punnett-mini" id="punnettMini" hidden></div>
       <div class="sel-actions">
         <button id="btnFollow" class="btn btn-glass" type="button">👁 دنبال‌کردن</button>
@@ -83,6 +89,12 @@
       </div>
     </div>
     <div class="toast" id="toast" hidden></div>
+    <div class="cam-controls">
+      <button id="btnZoomIn" type="button" aria-label="بزرگ‌نمایی">＋</button>
+      <button id="btnZoomOut" type="button" aria-label="کوچک‌نمایی">－</button>
+      <button id="btnCenter" type="button" aria-label="مرکز نقشه">🎯</button>
+    </div>
+    <canvas id="minimap" width="170" height="128" aria-label="نقشه کوچک"></canvas>
   </section>
 
   <aside class="panel" id="panel">
@@ -91,6 +103,7 @@
       <button class="tab active" data-tab="god" type="button">⛈ خدا</button>
       <button class="tab" data-tab="traits" type="button">🧬 ویژگی‌ها</button>
       <button class="tab" data-tab="genetics" type="button">🧪 ژنتیک</button>
+      <button class="tab" data-tab="civ" type="button">🏛 تمدن</button>
       <button class="tab" data-tab="stats" type="button">📊 آمار</button>
       <button class="tab" data-tab="log" type="button">📜 رویدادها</button>
       <button class="tab" data-tab="guide" type="button">📖 راهنما</button>
@@ -206,6 +219,19 @@
       <p class="note small">اپیستازی: ژن «پوشش تیره» روی ژن «رنگ پوشش» سوار است — اگر پوشش تیره ظاهر شود، بدن تیره می‌شود هرچقدر هم رنگ پوشش روشن باشد. در راهنما مثالش را ببین.</p>
     </section>
 
+    <!-- CIV -->
+    <section class="tab-page" id="tab-civ">
+      <h3>🏛 تمدن <span class="sub">قبیله، شغل، دانش و ساختمان</span></h3>
+      <p class="note">روی یک قبیله بزن تا انتخاب شود؛ ساختمان را انتخاب کن و بعد روی نقشه بزن تا جایش را مشخص کنی. فناوری‌ها خودبه‌خود پژوهش می‌شوند، ولی می‌توانی یکی را در اولویت بگذاری.</p>
+      <div id="tribeList"></div>
+      <div id="tribeDetail"></div>
+      <h3>🔬 درخت دانش</h3>
+      <div class="tech-grid" id="techTree"></div>
+      <h3>🏗 ساختن</h3>
+      <div class="build-grid" id="buildList"></div>
+      <p class="note small">ساختمان‌ها با چوب و سنگ انبار قبیله ساخته می‌شوند؛ سازندگان خودشان می‌روند و می‌سازند. خانه‌ها سرپناه می‌دهند، مزرعه و مرتع غذا می‌دهند، مدرسه و دانشگاه پژوهش را زیاد می‌کنند.</p>
+    </section>
+
     <!-- GUIDE -->
     <section class="tab-page" id="tab-guide">
       <h3>📖 راهنمای ژنتیک — به زبان ساده</h3>
@@ -255,6 +281,6 @@
   <span id="footFps">۶۰ فریم</span>
 </footer>
 
-<script src="app.js?v=15"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>

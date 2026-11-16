@@ -1443,11 +1443,16 @@ const S={
   customTraits:JSON.parse(localStorage.getItem('godsim-custom')||'[]'),
   historyPop:[], historyTraits:[], historyAllele:[], lastHist:0, elapsed:0, fps:60,
   mateSelected:null, pickMate:false, alleleGene:'speed',
+  tribes:[], buildings:[], buildQueue:[], trees:[], stones:[], animals:[],
+  selTribe:0, placing:null, highlightTribe:null, nextBuildId:1, civAcc:0, civRenderT:0, breedT:0,
   mutations:{neutral:0,beneficial:0,harmful:0},
   genetics:{matePref:'none',matePrefStrength:0.6},
   settings:{popCap:120,foodRate:4,foodEnergy:25,hungerRate:1,mutation:0.08,temperature:20,dayLength:60},
 };
-let W=800,H=600,DPR=1, foodAcc=0, statAcc=0, chartAcc=0;
+const WORLD_W=1600, WORLD_H=1200;
+let W=WORLD_W,H=WORLD_H,DPR=1, foodAcc=0, statAcc=0, chartAcc=0;
+let VW=800, VH=600;
+const CAM={x:0,y:0,zoom:1,fitted:false};
 const canvas=$('#world'), ctx=canvas.getContext('2d');
 
 /* ---------------- کش اسپرایت (پرفورمنس) ----------------
@@ -1490,7 +1495,7 @@ function foodSprite(){
 function skyGrad(night,dusk){
   const ph=night?'n':dusk?'d':'day';
   if(!bgGrad||bgPhase!==ph){ bgPhase=ph;
-    const g=ctx.createLinearGradient(0,0,0,H);
+    const g=ctx.createLinearGradient(0,0,0,VH);
     if(night){g.addColorStop(0,'#0a1030');g.addColorStop(1,'#0d1a2e');}
     else if(dusk){g.addColorStop(0,'#2b1d4e');g.addColorStop(1,'#3a2b1e');}
     else {g.addColorStop(0,'#0e2a24');g.addColorStop(1,'#123a2a');}
@@ -1545,6 +1550,8 @@ function makeAgent(x,y,genes,gen=1,lineage=null,hue=null,genotype=null,parents=[
     x:x??rand(30,W-30),y:y??rand(30,H-30),angle:rand(Math.PI*2),
     genes:base,genotype:gt,gen,lineage:lin,hue:hue??Math.floor(rand(0,360)),
     parents,ancestors,
+    tribeId:S.tribes.length?pick(S.tribes).id:0, job:null, manualJob:false, knowledge:rand(0,0.3),
+    inv:{wood:0,stone:0}, goal:'سرگردانی', harvestT:0, workT:0, raidCd:0, tradeT:0, target:null, patrol:null, raidTx:null, raidTy:null,
     energy:rand(55,90),health:100,age:0,lifespan:rand(2.2,3.8)*(0.6+base.lifespan),
     mateCd:rand(2,6),fightCd:0,plague:0,plagueT:0,dead:false,children:0,parentNames:'',
     wanderT:rand(0,2),tx:0,ty:0,targetFood:null};
@@ -1554,21 +1561,314 @@ function coatIsDark(a){
   return a.genes.mask>=0.6;
 }
 function spawnInitial(n){
-  for(let i=0;i<n;i++) S.agents.push(makeAgent());
-  logEvent(n+' موجود در جهان آفریده شدند.','good');
+  for(let i=0;i<n;i++){
+    const t=S.tribes[i%S.tribes.length];
+    const a=makeAgent(t.centre.x+rand(-170,170),t.centre.y+rand(-170,170));
+    a.tribeId=t.id; a.hue=clamp(t.hue+rand(-25,25),0,360);
+    a.age=rand(0,1.2); // جمعیت اولیه مخلوطی از کودک و بالغ است تا از همان اول کار کنند
+    S.agents.push(a);
+  }
+  for(const t of S.tribes) assignJobs(t);
+  logEvent(n+' موجود در جهان آفریده شدند و '+fa(S.tribes.length)+' قبیله تشکیل دادند.','good');
 }
 function spawnFood(x,y){
   S.foods.push({x:x??rand(16,W-16),y:y??rand(16,H-16),energy:S.settings.foodEnergy,pulse:rand(Math.PI*2),r:rand(4,6.5)});
 }
 function resetWorld(n){
   S.agents=[];S.foods=[];S.parts=[];S.floaters=[];S.corpses=[];S.selected=null;S.follow=false;
+  S.tribes=[];S.buildings=[];S.buildQueue=[];S.trees=[];S.stones=[];S.animals=[];
+  S.nextBuildId=1;S.selTribe=0;S.placing=null;S.highlightTribe=null;S.civAcc=0;S.breedT=0;
   S.day=1;S.timeOfDay=8;S.births=0;S.deaths=0;S.fights=0;S.droughtUntil=0;S.plagueActive=false;
   S.deathsBy={'گرسنگی':0,'پیری':0,'جنگ':0,'طاعون':0,'صاعقه':0,'شهاب':0,'خدا':0};
   S.historyPop=[];S.historyTraits=[];S.historyAllele=[];S.elapsed=0;
   S.mutations={neutral:0,beneficial:0,harmful:0}; S.mateSelected=null; S.pickMate=false;
-  for(let i=0;i<70;i++) spawnFood();
+  createTribes(); spawnResources();
+  for(let i=0;i<100;i++) spawnFood();
   spawnInitial(n||S.settings.popCap);
   $('#extinctBox').hidden=true; updateSelected();
+}
+
+/* ---------------- تمدن: قبایل، شغل‌ها، دانش، ساختمان ---------------- */
+const TRIBE_DEFS=[
+  {name:'قبیله آفتاب',color:'#f59e0b',hue:38,culture:'موسیقی و آواز'},
+  {name:'قبیله ماه',color:'#22d3ee',hue:190,culture:'داستان و اسطوره'},
+  {name:'قبیله رود',color:'#34d399',hue:150,culture:'رقص و نقاشی'},
+];
+const JOBS=[
+  {id:'gatherer',icon:'🪓',name:'جمع‌آور',desc:'چوب و سنگ جمع می‌کند'},
+  {id:'farmer',icon:'🌾',name:'کشاورز',desc:'در مزرعه کار می‌کند'},
+  {id:'builder',icon:'🔨',name:'سازنده',desc:'ساختمان می‌سازد'},
+  {id:'warrior',icon:'⚔️',name:'جنگجو',desc:'گشت می‌زند و حمله می‌کند'},
+  {id:'scholar',icon:'📚',name:'دانشمند',desc:'پژوهش می‌کند'},
+  {id:'healer',icon:'💊',name:'درمانگر',desc:'بیماران را درمان می‌کند'},
+  {id:'trader',icon:'🪙',name:'بازرگان',desc:'در بازار خرید و فروش می‌کند'},
+  {id:'herder',icon:'🐑',name:'دامدار',desc:'از حیوانات نگهداری می‌کند'},
+];
+const JOB_LIST=['gatherer','farmer','builder','warrior','scholar','healer','trader','herder'];
+const BUILDINGS={
+  house:{icon:'🏠',name:'خانه',wood:10,stone:5,desc:'سرپناه؛ شفا و مقاومت در سرما و گرما'},
+  farm:{icon:'🌾',name:'مزرعه',wood:8,stone:0,tech:'farming',desc:'کشاورز در آن غذا تولید می‌کند'},
+  pasture:{icon:'🐑',name:'مرتع',wood:6,stone:0,tech:'herding',desc:'حیوانات اهلی در آن زندگی و غذا می‌دهند'},
+  school:{icon:'🏫',name:'مدرسه',wood:15,stone:10,desc:'بچه‌ها درس می‌خوانند؛ پژوهش بیشتر'},
+  university:{icon:'🎓',name:'دانشگاه',wood:25,stone:20,tech:'writing',desc:'پژوهش بزرگ؛ دانشمندان سریع‌تر یاد می‌گیرند'},
+  hospital:{icon:'🏥',name:'بیمارستان',wood:20,stone:15,tech:'medicine',desc:'درمان سریع؛ مرگ طاعون کمتر'},
+  market:{icon:'🏪',name:'بازار',wood:12,stone:8,tech:'money',desc:'بازرگانان اینجا خرید و فروش می‌کنند'},
+  workshop:{icon:'🔨',name:'کارگاه',wood:10,stone:4,tech:'tools',desc:'ابزار بهتر؛ جمع‌آوری و ساخت سریع‌تر'},
+};
+const TECHS=[
+  {id:'fire',icon:'🔥',name:'آتش',cost:20,age:0,requires:[],desc:'گرما و نور؛ در سرما کمتر می‌میرند'},
+  {id:'tools',icon:'🪓',name:'ابزار سنگی',cost:25,age:0,requires:[],desc:'جمع‌آوری چوب و سنگ ۵۰٪ سریع‌تر'},
+  {id:'farming',icon:'🌾',name:'کشاورزی',cost:40,age:1,requires:['tools'],desc:'ساختن مزرعه باز می‌شود'},
+  {id:'herding',icon:'🐑',name:'دامداری',cost:35,age:1,requires:[],desc:'ساختن مرتع و اهلی‌کردن حیوان'},
+  {id:'pottery',icon:'🏺',name:'سفالگری',cost:30,age:1,requires:['fire'],desc:'انبار غذا؛ گرسنگی کمتر'},
+  {id:'copper',icon:'🥉',name:'مس',cost:50,age:2,requires:['tools'],desc:'ابزار مسی؛ جنگجویان قوی‌تر'},
+  {id:'bronze',icon:'⚔️',name:'برنز',cost:70,age:2,requires:['copper'],desc:'جنگجویان و سازندگان قوی‌تر'},
+  {id:'iron',icon:'⛏️',name:'آهن',cost:90,age:2,requires:['bronze'],desc:'بهترین ابزار؛ برداشت ۴۰٪ بیشتر'},
+  {id:'wheel',icon:'🛞',name:'چرخ',cost:60,age:2,requires:['tools'],desc:'بازرگانان و حمل‌ونقل سریع‌تر'},
+  {id:'writing',icon:'✍️',name:'نوشتار',cost:80,age:3,requires:['farming'],desc:'ساختن دانشگاه؛ دانش ماندگار'},
+  {id:'money',icon:'🪙',name:'پول',cost:90,age:3,requires:['writing','wheel'],desc:'ساختن بازار؛ تجارت با سکه'},
+  {id:'medicine',icon:'💊',name:'پزشکی',cost:85,age:3,requires:['writing'],desc:'ساختن بیمارستان؛ مرگ طاعون نصف'},
+  {id:'math',icon:'📐',name:'ریاضیات',cost:75,age:3,requires:['writing'],desc:'ساختن ۳۰٪ سریع‌تر'},
+  {id:'schooling',icon:'🎓',name:'آموزش همگانی',cost:120,age:3,requires:['writing','medicine'],desc:'همه دو برابر سریع‌تر یاد می‌گیرند'},
+];
+const AGES=['عصر سنگ','عصر کشاورزی','عصر فلز','عصر دانش'];
+
+function tribeById(id){ return S.tribes.find(t=>t.id===id); }
+function tribeMembers(t){ return S.agents.filter(a=>!a.dead&&a.tribeId===t.id); }
+function smallestTribe(){ let best=S.tribes[0]; for(const t of S.tribes) if(tribeMembers(t).length<tribeMembers(best).length) best=t; return best; }
+function hasTech(t,id){ return !!(t&&t.techs[id]); }
+function tribeAge(t){ let a=0; for(const id in t.techs){ const tc=TECHS.find(x=>x.id===id); if(tc) a=Math.max(a,tc.age);} return a; }
+function availableTechs(t){ return TECHS.filter(tc=>!t.techs[tc.id]&&tc.requires.every(r=>t.techs[r])); }
+function tribeCentre(t){ const m=tribeMembers(t); if(!m.length) return t.centre; let x=0,y=0; for(const a of m){x+=a.x;y+=a.y;} return {x:x/m.length,y:y/m.length}; }
+function createTribes(){
+  S.tribes=TRIBE_DEFS.map((d,i)=>({id:i,name:d.name,color:d.color,hue:d.hue,cultureName:d.culture,
+    stock:{wood:20,stone:10,food:30,coins:0},research:0,researchTarget:null,techs:{},culture:0,festivals:0,festivalUntil:0,
+    relations:{},centre:{x:[350,800,1250][i],y:[400,850,400][i]},
+    jobs:{gatherer:8,farmer:5,builder:3,warrior:4,scholar:3,healer:2,trader:2,herder:3},tradeCd:0}));
+  for(const t of S.tribes) for(const o of S.tribes) if(o!==t) t.relations[o.id]=0;
+}
+function spawnResources(){
+  S.trees=[];S.stones=[];S.animals=[];
+  for(let i=0;i<60;i++) S.trees.push({x:rand(40,WORLD_W-40),y:rand(40,WORLD_H-40),amount:5,kind:'tree'});
+  for(let i=0;i<30;i++) S.stones.push({x:rand(40,WORLD_W-40),y:rand(40,WORLD_H-40),amount:4,kind:'stone'});
+  for(let i=0;i<12;i++) S.animals.push({x:rand(60,WORLD_W-60),y:rand(60,WORLD_H-60),kind:Math.random()<0.6?'sheep':'cow',tribeId:null,health:100,age:rand(0.2,1),wanderT:rand(0,2),angle:rand(Math.PI*2),dead:false});
+}
+function jobScore(a,job){
+  const g=a.genes;
+  switch(job){
+    case 'gatherer': return g.vision*0.6+g.efficiency*0.4;
+    case 'farmer': return g.fertility*0.5+g.cooperation*0.5;
+    case 'builder': return g.size*0.5+g.efficiency*0.5;
+    case 'warrior': return g.aggression*0.6+g.size*0.4;
+    case 'scholar': return g.vision*0.5+a.knowledge*0.5;
+    case 'healer': return g.cooperation*0.6+g.immunity*0.4;
+    case 'trader': return g.efficiency*0.5+g.cooperation*0.5;
+    case 'herder': return g.fertility*0.5+g.vision*0.5;
+  } return 0;
+}
+function assignJobs(t){
+  const members=tribeMembers(t).filter(a=>a.age>=0.4&&!a.dead);
+  const counts={}; JOB_LIST.forEach(j=>counts[j]=0);
+  for(const a of members) if(a.job) counts[a.job]=(counts[a.job]||0)+1;
+  for(const a of members){ if(a.job&&!a.manualJob&&counts[a.job]>(t.jobs[a.job]||0)){ counts[a.job]--; a.job=null; } }
+  for(const job of JOB_LIST){
+    let need=(t.jobs[job]||0)-counts[job];
+    while(need>0){
+      const cand=members.filter(a=>!a.job).sort((x,y)=>jobScore(y,job)-jobScore(x,job))[0];
+      if(!cand) break; cand.job=job; counts[job]++; need--;
+    }
+  }
+  for(const a of members) if(!a.job) a.job='gatherer';
+}
+function moveToward(a,tx,ty,dt,speed){
+  const dx=tx-a.x,dy=ty-a.y,d=Math.hypot(dx,dy);
+  if(d<8) return true;
+  a.x+=dx/d*speed*dt; a.y+=dy/d*speed*dt; a.angle=Math.atan2(dy,dx);
+  return false;
+}
+function nearestResource(a){
+  let best=null,bd=Infinity;
+  for(const r of S.trees){ const d=(r.x-a.x)**2+(r.y-a.y)**2; if(d<bd){bd=d;best=r;} }
+  for(const r of S.stones){ const d=(r.x-a.x)**2+(r.y-a.y)**2; if(d<bd){bd=d;best=r;} }
+  return best;
+}
+function nearestAnimal(a,maxD){
+  let best=null,bd=maxD*maxD;
+  for(const an of S.animals){ if(an.dead) continue; const d=(an.x-a.x)**2+(an.y-a.y)**2; if(d<bd){bd=d;best=an;} }
+  return best;
+}
+function killAnimal(an,a){
+  an.dead=true; a.energy=clamp(a.energy+25,0,100); a.goal='شکار حیوان 🍖';
+  burst(an.x,an.y,'#fb7185',10,70); floater(an.x,an.y-14,'🍖 شکار','#fda4af');
+}
+function nearestAgentOfTribe(t,x,y,maxD){
+  let best=null,bd=maxD*maxD;
+  for(const a of S.agents){ if(a.dead||a.tribeId!==t.id) continue; const d=(a.x-x)**2+(a.y-y)**2; if(d<bd){bd=d;best=a;} }
+  return best;
+}
+function warTarget(t){ for(const o of S.tribes){ if(o.id!==t.id&&(t.relations[o.id]??0)<-50) return o; } return null; }
+function raidFight(a,b){
+  const pa=a.genes.size*0.6+a.genes.aggression*0.4+rand(.2)+(hasTech(tribeById(a.tribeId),'bronze')?0.2:0);
+  const pb=b.genes.size*0.6+b.genes.aggression*0.4+rand(.2)+(hasTech(tribeById(b.tribeId),'bronze')?0.2:0);
+  const win=pa>=pb?a:b, lose=win===a?b:a;
+  lose.health-=26; lose.energy=Math.max(0,lose.energy-10);
+  burst(lose.x,lose.y,'#f43f5e',10,90); floater(lose.x,lose.y-18,'⚔️','#fda4af');
+  if(lose.health<=0) killAgent(lose,'جنگ');
+}
+function gatherStep(a,t,dt,speed,know){
+  if(a.inv.wood+a.inv.stone>=6){
+    a.goal='بردن منابع به انبار 🪵';
+    if(moveToward(a,t.centre.x,t.centre.y,dt,speed)){ t.stock.wood+=a.inv.wood; t.stock.stone+=a.inv.stone; a.inv.wood=0; a.inv.stone=0; }
+    return true;
+  }
+  if(!a.target||a.target.amount<=0){ a.target=nearestResource(a); }
+  const tgt=a.target;
+  if(!tgt){ a.goal='جست‌وجوی منابع 🔍'; return false; }
+  a.goal=tgt.kind==='tree'?'قطع درخت 🌲':'استخراج سنگ 🪨';
+  if(!moveToward(a,tgt.x,tgt.y,dt,speed)) return true;
+  const rate=(hasTech(t,'tools')?1.5:1)*(hasTech(t,'iron')?1.4:1)*know;
+  a.harvestT+=dt*rate;
+  if(a.harvestT>=3){
+    a.harvestT=0; tgt.amount--;
+    if(tgt.kind==='tree'){ a.inv.wood+=2; burst(tgt.x,tgt.y,'#34d399',4,40); }
+    else { a.inv.stone+=2; burst(tgt.x,tgt.y,'#94a3b8',4,40); }
+    if(tgt.amount<=0){ if(tgt.kind==='tree'){ const i=S.trees.indexOf(tgt); if(i>=0) S.trees.splice(i,1); } else { const i=S.stones.indexOf(tgt); if(i>=0) S.stones.splice(i,1); } a.target=null; }
+  }
+  return true;
+}
+function farmerStep(a,t,dt,speed,know){
+  const farms=S.buildings.filter(b=>b.tribeId===t.id&&b.type==='farm'&&b.progress>=100);
+  if(!farms.length) return gatherStep(a,t,dt,speed,know);
+  let f=null,bd=Infinity;
+  for(const b of farms){ if(b.growth<100){ const d=(b.x-a.x)**2+(b.y-a.y)**2; if(d<bd){bd=d;f=b;} } }
+  if(!f) return gatherStep(a,t,dt,speed,know);
+  a.goal='کار در مزرعه 🌾';
+  if(!moveToward(a,f.x,f.y,dt,speed)) return true;
+  f.growth=clamp(f.growth+dt*6*know,0,100);
+  if(f.growth>=100){ f.growth=0; const yld=10+Math.round(4*know); t.stock.food+=yld; burst(f.x,f.y,'#fbbf24',8,60); floater(f.x,f.y-14,'🌾 +'+fa(yld)+' غذا','#fde68a'); }
+  return true;
+}
+function builderStep(a,t,dt,speed,know){
+  const job=S.buildQueue.find(q=>q.tribeId===t.id);
+  if(!job) return gatherStep(a,t,dt,speed,know);
+  const b=S.buildings.find(x=>x.id===job.buildingId);
+  if(!b){ S.buildQueue.splice(S.buildQueue.indexOf(job),1); return true; }
+  a.goal='ساختن '+BUILDINGS[b.type].name+' 🏗';
+  if(!moveToward(a,b.x,b.y,dt,speed)) return true;
+  b.progress=clamp(b.progress+dt*(10+10*know)*(hasTech(t,'math')?1.3:1),0,100);
+  if(b.progress>=100){
+    const qi=S.buildQueue.findIndex(q=>q.buildingId===b.id); if(qi>=0) S.buildQueue.splice(qi,1);
+    logEvent('🏗 '+t.name+' یک «'+BUILDINGS[b.type].name+'» ساخت!','good');
+    floater(b.x,b.y-20,'🏗 ساخته شد!','#fde68a');
+    if(b.type==='school') logEvent('🏫 اولین مدرسه‌ی '+t.name+' ساخته شد — بچه‌ها حالا درس می‌خوانند!','good');
+    if(b.type==='market') logEvent('🏪 بازار '+t.name+' باز شد — تجارت با سکه شروع شد!','good');
+  }
+  return true;
+}
+function warriorStep(a,t,dt,speed,know){
+  a.raidCd=Math.max(0,(a.raidCd||0)-dt);
+  const enemy=warTarget(t);
+  if(enemy&&a.raidCd<=0){
+    a.goal='حمله به '+enemy.name+' ⚔️';
+    if(a.raidTx==null){ a.raidTx=enemy.centre.x+rand(-40,40); a.raidTy=enemy.centre.y+rand(-40,40); }
+    if(moveToward(a,a.raidTx,a.raidTy,dt,speed)){
+      a.raidCd=30; a.raidTx=null; a.raidTy=null;
+      const steal=Math.min(8,enemy.stock.food); enemy.stock.food-=steal; t.stock.food+=steal;
+      S.fights++;
+      const def=nearestAgentOfTribe(enemy,a.x,a.y,60);
+      if(def) raidFight(a,def);
+      if(Math.random()<0.5) logEvent('⚔️ جنگجوی '+t.name+' به '+enemy.name+' حمله کرد و '+fa(steal)+' غذا دزدید!','bad');
+    }
+    return true;
+  }
+  a.goal='گشت‌زنی 🛡';
+  if(!a.patrol||Math.hypot(a.patrol.x-a.x,a.patrol.y-a.y)<20){ a.patrol={x:t.centre.x+rand(-150,150),y:t.centre.y+rand(-150,150)}; }
+  moveToward(a,a.patrol.x,a.patrol.y,dt,speed*0.7);
+  return true;
+}
+function scholarStep(a,t,dt,speed,know){
+  const uni=S.buildings.find(b=>b.tribeId===t.id&&b.type==='university'&&b.progress>=100);
+  const sch=uni||S.buildings.find(b=>b.tribeId===t.id&&b.type==='school'&&b.progress>=100);
+  let rp=0.8;
+  if(sch){
+    a.goal=uni?'پژوهش در دانشگاه 🎓':'آموزش در مدرسه 🏫';
+    if(!moveToward(a,sch.x,sch.y,dt,speed)) return true;
+    rp=uni?2.2:1.4; a.knowledge=clamp(a.knowledge+dt*0.02,0,1);
+  } else { a.goal='اندیشیدن 📚'; }
+  t.research+=rp*know*dt; a.knowledge=clamp(a.knowledge+dt*0.008,0,1); t.culture+=0.02*dt;
+  return true;
+}
+function healerStep(a,t,dt,speed,know){
+  let sick=null,bd=300*300;
+  for(const o of S.agents){ if(o.dead||o===a) continue; if(o.health<60||o.plague>0){ const d=(o.x-a.x)**2+(o.y-a.y)**2; if(d<bd){bd=d;sick=o;} } }
+  if(!sick){
+    a.goal='آماده‌باش درمان 💊';
+    moveToward(a,t.centre.x,t.centre.y,dt,speed*0.5);
+    return true;
+  }
+  a.goal='درمان '+sick.name;
+  if(!moveToward(a,sick.x,sick.y,dt,speed)) return true;
+  const med=hasTech(t,'medicine')?1.6:1;
+  sick.health=clamp(sick.health+9*med*dt,0,100);
+  if(sick.plague>0){ sick.plagueT+=dt*2*med; if(sick.plagueT>14){ sick.plague=0; sick.health=clamp(sick.health+20,0,100); } }
+  return true;
+}
+function traderStep(a,t,dt,speed,know){
+  const market=S.buildings.find(b=>b.tribeId===t.id&&b.type==='market'&&b.progress>=100);
+  if(!market||!hasTech(t,'money')) return gatherStep(a,t,dt,speed,know);
+  a.tradeT=(a.tradeT||0)-dt;
+  const arr=moveToward(a,market.x,market.y,dt,speed);
+  if(!arr){ a.goal='رفتن به بازار 🏪'; return true; }
+  if(a.tradeT>0){ a.goal='در بازار 🏪'; return true; }
+  a.goal='تجارت در بازار 🪙';
+  a.tradeT=8;
+  if(t.stock.food>60){ t.stock.food-=10; t.stock.coins+=12; floater(market.x,market.y-16,'🪙 +۱۲ سکه','#fde68a'); }
+  else if(t.stock.wood>40){ t.stock.wood-=10; t.stock.coins+=10; floater(market.x,market.y-16,'🪙 +۱۰ سکه','#fde68a'); }
+  else if(t.stock.food<20&&t.stock.coins>=10){ t.stock.coins-=10; t.stock.food+=12; floater(market.x,market.y-16,'🍎 خرید غذا','#a7f3d0'); }
+  for(const o of S.tribes){
+    if(o.id!==t.id&&hasTech(o,'money')&&(t.relations[o.id]||0)>30&&t.stock.food>40&&o.stock.coins>=6){
+      t.stock.food-=5; o.stock.food+=5; o.stock.coins-=6; t.stock.coins+=6;
+      t.relations[o.id]=clamp((t.relations[o.id]||0)+2,-100,100); o.relations[t.id]=clamp((o.relations[t.id]||0)+2,-100,100);
+    }
+  }
+  return true;
+}
+function herderStep(a,t,dt,speed,know){
+  const past=S.buildings.find(b=>b.tribeId===t.id&&b.type==='pasture'&&b.progress>=100);
+  if(!past){
+    let an=null,bd=400*400;
+    for(const x of S.animals){ if(!x.tribeId){ const d=(x.x-a.x)**2+(x.y-a.y)**2; if(d<bd){bd=d;an=x;} } }
+    if(!an) return gatherStep(a,t,dt,speed,know);
+    a.goal='اهلی‌کردن حیوان 🐑';
+    if(!moveToward(a,an.x,an.y,dt,speed)) return true;
+    an.tribeId=t.id; floater(an.x,an.y-14,'🐑 اهلی شد!','#a7f3d0');
+    return true;
+  }
+  a.goal='دامداری 🐑';
+  if(!moveToward(a,past.x,past.y,dt,speed)) return true;
+  past.milkT=(past.milkT||0)+dt;
+  if(past.milkT>6){ past.milkT=0; const herd=S.animals.filter(x=>x.tribeId===t.id); if(herd.length){ t.stock.food+=2*herd.length; floater(past.x,past.y-16,'🥛 +'+fa(2*herd.length)+' غذا','#fde68a'); } }
+  return true;
+}
+function jobStep(a,dt,speed){
+  const t=tribeById(a.tribeId); if(!t) return false;
+  if(a.energy<30&&t.stock.food>0){
+    a.goal='رفتن به انبار برای غذا 🍽';
+    if(moveToward(a,t.centre.x,t.centre.y,dt,speed)){ if(t.stock.food>=1){ t.stock.food-=1; a.energy=clamp(a.energy+18,0,100); a.goal='خوردن از انبار 🍽'; } }
+    return true;
+  }
+  const know=1+a.knowledge*0.5;
+  switch(a.job){
+    case 'gatherer': return gatherStep(a,t,dt,speed,know);
+    case 'farmer': return farmerStep(a,t,dt,speed,know);
+    case 'builder': return builderStep(a,t,dt,speed,know);
+    case 'warrior': return warriorStep(a,t,dt,speed,know);
+    case 'scholar': return scholarStep(a,t,dt,speed,know);
+    case 'healer': return healerStep(a,t,dt,speed,know);
+    case 'trader': return traderStep(a,t,dt,speed,know);
+    case 'herder': return herderStep(a,t,dt,speed,know);
+  }
+  return false;
 }
 
 /* ---------------- مرگ و تولد ---------------- */
@@ -1615,6 +1915,7 @@ function reproduce(a,b){
   const c=makeAgent(a.x+rand(-16,16),a.y+rand(-16,16),childGenes,Math.max(a.gen,b.gen)+1,
     Math.random()<.5?a.lineage:b.lineage, Math.random()<.5?a.hue:b.hue, childGt, [a.id,b.id], ancestors);
   c.parentNames=a.name+' و '+b.name;
+  c.tribeId=a.tribeId; c.job=null; c.manualJob=false; c.knowledge=rand(0,0.1);
   c.inbreedF=F;
   if(F>0){ // افسردگی هم‌خونی: سلامتی و عمر کمتر، گاهی مرگ در بدو تولد
     c.health=clamp(100-F*140,15,100); c.lifespan*=(1-F*0.7);
@@ -1629,6 +1930,208 @@ function reproduce(a,b){
   S.agents.push(c); S.births++;
   burst(c.x,c.y,'#fbbf24',10,70); floater(c.x,c.y-16,'👶 نسل '+fa(c.gen),'#fde68a');
   if(c.gen>=5&&Math.random()<.3) logEvent('🌟 '+c.name+' از نسل '+fa(c.gen)+' متولد شد ('+c.parentNames+').','good');
+}
+
+/* ---------------- ساخت‌وساز، پژوهش، حیوانات، دوربین، رابط تمدن ---------------- */
+function queueBuilding(t,type,x,y,auto){
+  const def=BUILDINGS[type];
+  if(def.tech&&!hasTech(t,def.tech)){ if(!auto) toast('اول باید فناوری «'+TECHS.find(z=>z.id===def.tech).name+'» را کشف کنی'); return false; }
+  if(t.stock.wood<def.wood||t.stock.stone<def.stone){ if(!auto) toast('منابع کافی نیست: '+fa(def.wood)+' چوب و '+fa(def.stone)+' سنگ لازم است'); return false; }
+  t.stock.wood-=def.wood; t.stock.stone-=def.stone;
+  const b={id:S.nextBuildId++,type,x:clamp(x,30,WORLD_W-30),y:clamp(y,30,WORLD_H-30),tribeId:t.id,progress:0,growth:0,milkT:0};
+  S.buildings.push(b);
+  S.buildQueue.push({tribeId:t.id,type,buildingId:b.id});
+  if(!auto) logEvent('🏗 '+t.name+' ساخت «'+def.name+'» را شروع کرد.','good');
+  return true;
+}
+function animalsTick(dt){
+  for(const an of S.animals){
+    if(an.dead) continue;
+    an.wanderT-=dt; if(an.wanderT<=0){ an.wanderT=rand(2,5); an.angle=rand(Math.PI*2); }
+    const past=an.tribeId!=null?S.buildings.find(b=>b.tribeId===an.tribeId&&b.type==='pasture'&&b.progress>=100):null;
+    if(past&&Math.hypot(an.x-past.x,an.y-past.y)>130){ an.angle=Math.atan2(past.y-an.y,past.x-an.x); }
+    const sp=an.tribeId!=null?10:16;
+    an.x+=Math.cos(an.angle)*sp*dt; an.y+=Math.sin(an.angle)*sp*dt;
+    an.x=clamp(an.x,20,WORLD_W-20); an.y=clamp(an.y,20,WORLD_H-20);
+    an.age+=dt/60;
+  }
+  S.animals=S.animals.filter(x=>!x.dead);
+  S.breedT=(S.breedT||0)+dt;
+  if(S.breedT>8){ S.breedT=0;
+    if(S.animals.length<30){
+      const adults=S.animals.filter(x=>!x.dead&&x.age>0.5);
+      if(adults.length>=2){
+        const a1=pick(adults);
+        const a2=adults.find(x=>x!==a1&&x.kind===a1.kind&&Math.hypot(x.x-a1.x,x.y-a1.y)<80);
+        if(a2) S.animals.push({x:a1.x+rand(-20,20),y:a1.y+rand(-20,20),kind:a1.kind,tribeId:a1.tribeId,health:100,age:0,wanderT:rand(0,2),angle:rand(Math.PI*2),dead:false});
+      }
+    }
+  }
+}
+function civTick(dt){
+  if(S.trees.length<60&&Math.random()<dt*0.5) S.trees.push({x:rand(40,WORLD_W-40),y:rand(40,WORLD_H-40),amount:5,kind:'tree'});
+  if(S.stones.length<30&&Math.random()<dt*0.3) S.stones.push({x:rand(40,WORLD_W-40),y:rand(40,WORLD_H-40),amount:4,kind:'stone'});
+  animalsTick(dt);
+  for(const t of S.tribes){
+    const schools=S.buildings.filter(b=>b.tribeId===t.id&&b.type==='school'&&b.progress>=100).length;
+    const unis=S.buildings.filter(b=>b.tribeId===t.id&&b.type==='university'&&b.progress>=100).length;
+    t.research+=(schools*0.15+unis*0.4)*dt;
+    t.culture+=(schools*0.05+unis*0.1)*dt;
+    if(t.culture>=50*(t.festivals+1)){ t.festivals++; t.festivalUntil=S.elapsed+20; logEvent('🎉 جشنواره‌ی '+t.name+' برگزار شد! فرهنگ بالا رفت — اعضا شادتر و بارورتر شدند.','good'); }
+    if(!t.researchTarget||t.techs[t.researchTarget]){ const av=availableTechs(t); t.researchTarget=av.length?av.sort((a,b)=>a.cost-b.cost)[0].id:null; }
+    const target=t.researchTarget?TECHS.find(x=>x.id===t.researchTarget):null;
+    if(target&&t.research>=target.cost){
+      t.research-=target.cost; t.techs[target.id]=true; t.researchTarget=null;
+      logEvent('🔬 '+t.name+' فناوری «'+target.name+'» را کشف کرد! ('+AGES[target.age]+')','good');
+      if(target.id==='money') logEvent('🪙 پول اختراع شد! حالا می‌توان بازار ساخت و با سکه تجارت کرد.','good');
+      if(target.id==='writing') logEvent('✍️ نوشتار کشف شد — حالا می‌شود دانشگاه ساخت.','good');
+      if(target.id==='medicine') logEvent('💊 پزشکی کشف شد — حالا می‌شود بیمارستان ساخت.','good');
+    }
+    for(const o of S.tribes){ if(o.id!==t.id){ const r=t.relations[o.id]||0; t.relations[o.id]=r+(0-r)*0.002*dt; } }
+    if(!S.buildings.some(b=>b.tribeId===t.id&&b.type==='house')&&!S.buildQueue.some(q=>q.tribeId===t.id&&q.type==='house')&&t.stock.wood>=10&&t.stock.stone>=5){
+      queueBuilding(t,'house',t.centre.x+rand(-60,60),t.centre.y+rand(-60,60),true);
+    }
+    if(hasTech(t,'farming')&&!S.buildings.some(b=>b.tribeId===t.id&&b.type==='farm')&&!S.buildQueue.some(q=>q.tribeId===t.id&&q.type==='farm')&&t.stock.wood>=8){
+      queueBuilding(t,'farm',t.centre.x+rand(-90,90),t.centre.y+rand(-90,90),true);
+    }
+  }
+  S.civAcc=(S.civAcc||0)+dt;
+  if(S.civAcc>5){ S.civAcc=0; for(const t of S.tribes){ t.centre=tribeCentre(t); assignJobs(t); } }
+}
+/* دوربین */
+function screenToWorld(sx,sy){ return {x:CAM.x+sx/CAM.zoom, y:CAM.y+sy/CAM.zoom}; }
+function worldToScreen(wx,wy){ return {x:(wx-CAM.x)*CAM.zoom, y:(wy-CAM.y)*CAM.zoom}; }
+function clampCam(){
+  const vw=VW/CAM.zoom, vh=VH/CAM.zoom;
+  CAM.x = vw>=WORLD_W ? (WORLD_W-vw)/2 : clamp(CAM.x,-40,WORLD_W-vw+40);
+  CAM.y = vh>=WORLD_H ? (WORLD_H-vh)/2 : clamp(CAM.y,-40,WORLD_H-vh+40);
+}
+function fitCamera(){ CAM.zoom=clamp(Math.min(VW/WORLD_W,VH/WORLD_H),0.5,3); CAM.x=(WORLD_W-VW/CAM.zoom)/2; CAM.y=(WORLD_H-VH/CAM.zoom)/2; CAM.fitted=true; clampCam(); }
+function zoomAt(sx,sy,f){ const b=screenToWorld(sx,sy); CAM.zoom=clamp(CAM.zoom*f,0.5,3); const a=screenToWorld(sx,sy); CAM.x+=b.x-a.x; CAM.y+=b.y-a.y; clampCam(); }
+function drawMinimap(){
+  const mm=$('#minimap'); if(!mm) return;
+  const mc=mm.getContext('2d'); if(!mc) return;
+  const mw=mm.width, mh=mm.height, sx=mw/WORLD_W, sy=mh/WORLD_H;
+  mc.fillStyle='#0a1030'; mc.fillRect(0,0,mw,mh);
+  mc.fillStyle='#34d399'; for(const tr of S.trees) mc.fillRect(tr.x*sx-1,tr.y*sy-1,2,2);
+  mc.fillStyle='#94a3b8'; for(const st of S.stones) mc.fillRect(st.x*sx-1,st.y*sy-1,2,2);
+  for(const tr of S.tribes){
+    mc.fillStyle=tr.color; mc.beginPath();
+    mc.arc(tr.centre.x*sx,tr.centre.y*sy,Math.max(3,Math.sqrt(tribeMembers(tr).length)*1.2),0,Math.PI*2); mc.fill();
+  }
+  mc.fillStyle='#fff'; for(const b of S.buildings) mc.fillRect(b.x*sx-1.5,b.y*sy-1.5,3,3);
+  mc.strokeStyle='rgba(255,255,255,.9)'; mc.lineWidth=1.5;
+  mc.strokeRect(CAM.x*sx,CAM.y*sy,VW/CAM.zoom*sx,VH/CAM.zoom*sy);
+}
+function renderCiv(){
+  const listEl=$('#tribeList'); if(!listEl) return;
+  const t=tribeById(S.selTribe)||S.tribes[0]; if(!t) return; S.selTribe=t.id;
+  listEl.innerHTML=S.tribes.map(tr=>{
+    const m=tribeMembers(tr).length;
+    return '<div class="tribe-row'+(tr.id===t.id?' sel':'')+'" data-civ="tribe:'+tr.id+'">'
+      +'<span class="tribe-dot" style="background:'+tr.color+'"></span>'
+      +'<div class="tribe-info"><b>'+tr.name+'</b><small>'+AGES[tribeAge(tr)]+' • '+fa(m)+' نفر • 🔬 '+fa(Object.keys(tr.techs).length)+' فناوری • 🎭 فرهنگ '+fa(Math.round(tr.culture))+'</small></div>'
+      +'<span class="tribe-stock">🪵'+fa(tr.stock.wood)+' 🪨'+fa(tr.stock.stone)+' 🍎'+fa(tr.stock.food)+' 🪙'+fa(tr.stock.coins)+'</span></div>';
+  }).join('');
+  const members=tribeMembers(t);
+  const avgHealth=members.length?members.reduce((s,a)=>s+a.health,0)/members.length:0;
+  const target=t.researchTarget?TECHS.find(x=>x.id===t.researchTarget):null;
+  const av=availableTechs(t);
+  const cur=target||(av.length?av.slice().sort((a,b)=>a.cost-b.cost)[0]:null);
+  const jobCounts={}; JOB_LIST.forEach(j=>jobCounts[j]=0);
+  for(const a of members) if(a.job) jobCounts[a.job]=(jobCounts[a.job]||0)+1;
+  const fest=S.elapsed<t.festivalUntil;
+  $('#tribeDetail').innerHTML=
+    '<div class="stock-grid">'
+    +'<div>🪵 چوب<b>'+fa(t.stock.wood)+'</b></div><div>🪨 سنگ<b>'+fa(t.stock.stone)+'</b></div>'
+    +'<div>🍎 غذا<b>'+fa(t.stock.food)+'</b></div><div>🪙 سکه<b>'+fa(t.stock.coins)+'</b></div>'
+    +'<div>🔬 پژوهش<b>'+fa(Math.round(t.research))+(cur?' / '+fa(cur.cost):'')+'</b></div><div>❤️ سلامت<b>٪'+fa(Math.round(avgHealth))+'</b></div>'
+    +'</div>'
+    +'<p class="note">'+t.name+' در '+AGES[tribeAge(t)]+' است • فرهنگ '+t.cultureName+' ('+fa(Math.round(t.culture))+' امتیاز)'+(fest?' • 🎉 جشنواره در جریان است!':'')+' • مرکز قبیله روی نقشه با پرچم مشخص است.</p>'
+    +(cur?'<div class="research-row">🔬 در حال پژوهش: <b>'+cur.icon+' '+cur.name+'</b> — '+fa(Math.round(t.research))+' از '+fa(cur.cost)+' امتیاز</div>':'<p class="note">همه‌ی فناوری‌های ممکن کشف شده‌اند! 🎉</p>')
+    +'<h4>💼 شغل‌ها <span class="sub">سهمیه هر شغل را کم و زیاد کن</span></h4>'
+    +'<div class="jobs">'+JOBS.map(j=>'<div class="job-row"><span>'+j.icon+' '+j.name+'</span><b>'+fa(jobCounts[j.id]||0)+' نفر</b><span class="quota"><button class="btn btn-glass" type="button" data-civ="job:'+j.id+':-1">−</button><b>'+fa(t.jobs[j.id]||0)+'</b><button class="btn btn-glass" type="button" data-civ="job:'+j.id+':1">＋</button></span></div>').join('')+'</div>'
+    +'<h4>🤝 روابط با قبایل دیگر</h4>'
+    +S.tribes.filter(o=>o.id!==t.id).map(o=>{ const r=t.relations[o.id]||0;
+      return '<div class="rel-row"><span><span class="tribe-dot" style="background:'+o.color+'"></span>'+o.name+'</span>'
+      +'<div class="bar" style="flex:1"><i style="width:'+((r+100)/2)+'%;background:'+(r<-50?'#fb7185':r>50?'#34d399':'#f59e0b')+'"></i></div>'
+      +'<b>'+(r>0?'+':'')+fa(Math.round(r))+'</b>'
+      +'<button class="btn btn-danger" type="button" data-civ="rel:'+o.id+':war">⚔️ جنگ</button>'
+      +'<button class="btn btn-glass" type="button" data-civ="rel:'+o.id+':peace">🕊 صلح</button>'
+      +'<button class="btn btn-glass" type="button" data-civ="rel:'+o.id+':gift">🎁 هدیه</button></div>'; }).join('')
+    +'<h4>🏗 ساختمان‌های '+t.name+'</h4>'
+    +'<div class="build-owned">'+(S.buildings.filter(b=>b.tribeId===t.id).map(b=>'<span class="pill">'+BUILDINGS[b.type].icon+' '+BUILDINGS[b.type].name+' '+(b.progress>=100?'✓':'٪'+fa(Math.round(b.progress)))+'</span>').join('')||'<span style="color:var(--muted);font-size:12px">هنوز ساختمانی نیست — از پایین یکی بساز.</span>')+'</div>';
+  $('#techTree').innerHTML=TECHS.map(tc=>{
+    const done=!!t.techs[tc.id];
+    const avail=!done&&tc.requires.every(r=>t.techs[r]);
+    const reqNames=tc.requires.map(r=>TECHS.find(x=>x.id===r).name).join(' و ');
+    return '<div class="tech-card'+(done?' done':avail?' avail':' locked')+'" '+(avail?'data-civ="tech:'+tc.id+'"':'')+'>'
+      +'<b>'+tc.icon+' '+tc.name+'</b><span>'+AGES[tc.age]+' • 🔬 '+fa(tc.cost)+'</span>'
+      +'<small>'+tc.desc+'</small>'
+      +'<small>'+(done?'✅ کشف شده':avail?(t.researchTarget===tc.id?'🎯 در اولویت — در حال پژوهش':'👆 بزن تا در اولویت پژوهش قرار گیرد'):'🔒 نیازمند: '+reqNames)+'</small></div>';
+  }).join('');
+  $('#buildList').innerHTML=Object.entries(BUILDINGS).map(([type,def])=>{
+    const locked=def.tech&&!hasTech(t,def.tech);
+    const afford=t.stock.wood>=def.wood&&t.stock.stone>=def.stone;
+    return '<div class="build-card'+(locked?' locked':'')+'">'
+      +'<b>'+def.icon+' '+def.name+'</b><span>🪵'+fa(def.wood)+' 🪨'+fa(def.stone)+'</span><small>'+def.desc+'</small>'
+      +'<small>'+(locked?'🔒 نیازمند فناوری «'+TECHS.find(x=>x.id===def.tech).name+'»':afford?'':'⚠️ منابع کافی نیست')+'</small>'
+      +'<button class="btn btn-primary" type="button" data-civ="build:'+type+'"'+(locked?' disabled':'')+'>'+(S.placing===type?'✕ لغو انتخاب':'🏗 ساختن')+'</button></div>';
+  }).join('');
+}
+function onCivClick(b){
+  const parts=b.dataset.civ.split(':');
+  const kind=parts[0], arg=parts[1], arg2=parts[2];
+  const t=tribeById(S.selTribe); if(!t) return;
+  if(kind==='tribe'){
+    S.selTribe=+arg; S.highlightTribe=+arg;
+    const tr=tribeById(S.selTribe);
+    CAM.x=tr.centre.x-VW/CAM.zoom/2; CAM.y=tr.centre.y-VH/CAM.zoom/2; clampCam();
+    renderCiv();
+  }
+  else if(kind==='tech'){
+    const tc=TECHS.find(x=>x.id===arg);
+    if(tc&&availableTechs(t).some(x=>x.id===arg)){ t.researchTarget=arg; logEvent('🔬 '+t.name+' حالا روی «'+tc.name+'» تمرکز می‌کند.','god'); renderCiv(); }
+  }
+  else if(kind==='build'){
+    if(S.placing===arg){ S.placing=null; updatePlacingHint(); }
+    else { S.placing=arg; toast('🏗 «'+BUILDINGS[arg].name+'» را انتخاب کردی — حالا روی نقشه بزن'); updatePlacingHint(); }
+    renderCiv();
+  }
+  else if(kind==='job'){
+    t.jobs[arg]=clamp((t.jobs[arg]||0)+(+arg2),0,40); assignJobs(t); renderCiv();
+  }
+  else if(kind==='rel'){
+    const o=tribeById(+arg); if(!o) return;
+    if(arg2==='war'){ t.relations[o.id]=-60; o.relations[t.id]=-60; logEvent('⚔️ '+t.name+' به '+o.name+' اعلام جنگ کرد!','bad'); }
+    else if(arg2==='peace'){ t.relations[o.id]=0; o.relations[t.id]=0; logEvent('🕊 '+t.name+' و '+o.name+' صلح کردند.','good'); }
+    else if(arg2==='gift'){
+      if(t.stock.food>=10){ t.stock.food-=10; o.stock.food+=10;
+        t.relations[o.id]=clamp((t.relations[o.id]||0)+20,-100,100); o.relations[t.id]=clamp((o.relations[t.id]||0)+20,-100,100);
+        logEvent('🎁 '+t.name+' به '+o.name+' ۱۰ غذا هدیه داد — رابطه بهتر شد.','good');
+      } else toast('غذای کافی در انبار نیست');
+    }
+    renderCiv();
+  }
+}
+function updatePlacingHint(){
+  const h=$('#hint'); if(!h) return;
+  if(S.placing){ const t=tribeById(S.selTribe); h.textContent='🏗 ساختن «'+BUILDINGS[S.placing].name+'» برای '+(t?t.name:'')+' — روی نقشه بزن تا جایش را انتخاب کنی (دوباره دکمه را بزن تا لغو شود)'; }
+  else h.textContent='بکش تا نقشه جابه‌جا شود • پینچ یا چرخ موس = زوم • روی موجود بزن تا انتخابش کنی • دو بار بزن = باران غذا';
+}
+function buildCiv(){
+  $('#tab-civ').addEventListener('click',e=>{ const b=e.target.closest('[data-civ]'); if(b) onCivClick(b); });
+  $('#btnZoomIn').addEventListener('click',()=>zoomAt(VW/2,VH/2,1.3));
+  $('#btnZoomOut').addEventListener('click',()=>zoomAt(VW/2,VH/2,1/1.3));
+  $('#btnCenter').addEventListener('click',()=>{ fitCamera(); toast('🎯 نقشه به مرکز برگشت'); });
+  const mm=$('#minimap');
+  if(mm) mm.addEventListener('pointerdown',e=>{ const r=mm.getBoundingClientRect(); const wx=(e.clientX-r.left)/r.width*WORLD_W, wy=(e.clientY-r.top)/r.height*WORLD_H; CAM.x=wx-VW/CAM.zoom/2; CAM.y=wy-VH/CAM.zoom/2; clampCam(); });
+  const sj=$('#selJob');
+  if(sj){
+    sj.innerHTML='<option value="">— بدون شغل —</option>'+JOBS.map(j=>'<option value="'+j.id+'">'+j.icon+' '+j.name+'</option>').join('');
+    sj.addEventListener('change',()=>{ const a=S.selected; if(a&&sj.value){ a.job=sj.value; a.manualJob=true; logEvent('💼 شغل '+a.name+' شد «'+(JOBS.find(j=>j.id===sj.value)||{}).name+'».','god'); updateSelected(); } });
+  }
+  renderCiv();
 }
 
 /* ---------------- تیک شبیه‌سازی ---------------- */
@@ -1673,6 +2176,8 @@ function addMigrants(n){
     const gt=randomGenotypeAll(0.5);
     gt.speed=randomGenotype('speed',0.85); gt.size=randomGenotype('size',0.85); gt.vision=randomGenotype('vision',0.3);
     const a=makeAgent(rand(30,W-30),rand(30,H-30),null,1,null,hueBase,gt);
+    a.tribeId=smallestTribe().id; a.hue=clamp(tribeById(a.tribeId).hue+rand(-25,25),0,360);
+    a.age=rand(0.5,1.5); // مهاجران بالغ می‌آیند تا بتوانند کار و تولیدمثل کنند
     a.name='🧳 مهاجر-'+fa(a.id); S.agents.push(a);
   }
   logEvent('🧳 '+fa(n)+' مهاجر با ژن‌های متفاوت وارد جهان شدند — جریان ژنی شروع شد.','god');
@@ -1692,6 +2197,12 @@ function tick(dt){
   S.corpses=S.corpses.filter(c=>c.life>0);
 
   const temp=tempNow(), cold=temp<2, hot=temp>33;
+  // داده‌های آماده‌ی قبیله برای این تیک (خانه‌ها و مدرسه‌ها)
+  const tribeHouse={}, tribeSchools={};
+  for(const t of S.tribes){
+    tribeHouse[t.id]=S.buildings.filter(b=>b.tribeId===t.id&&b.type==='house'&&b.progress>=100).length;
+    tribeSchools[t.id]=S.buildings.filter(b=>b.tribeId===t.id&&(b.type==='school'||b.type==='university')&&b.progress>=100);
+  }
   const crowded=S.agents.length/S.settings.popCap;
   const fertFactor=crowded>=1?0.05:crowded>0.8?0.5:1;
 
@@ -1703,25 +2214,35 @@ function tick(dt){
     let extra=0;
     if(cold) extra=(1-a.genes.coldRes)*(2-temp)*0.35*dt;
     if(hot) extra=(1-a.genes.heatRes)*(temp-33)*0.3*dt;
+    if(tribeHouse[a.tribeId]>0) extra*=0.5;
     a.energy=clamp(a.energy-drain-extra,0,100);
     if(a.energy<=0){ a.health-=14*dt; if(a.health<=0){killAgent(a,'گرسنگی');continue;} }
-    else if(a.energy>40) a.health=clamp(a.health+4*dt,0,100);
+    else if(a.energy>40) a.health=clamp(a.health+(4+(tribeHouse[a.tribeId]>0?2:0))*dt,0,100);
     if(a.age>=a.lifespan){ killAgent(a,'پیری'); continue; }
     // طاعون
-    if(a.plague>0){ a.plagueT+=dt; a.health-=9*dt*(1-a.genes.immunity*0.7);
+    if(a.plague>0){ a.plagueT+=dt; a.health-=9*dt*(1-a.genes.immunity*0.7)*(tribeById(a.tribeId)&&hasTech(tribeById(a.tribeId),'medicine')?0.5:1);
       if(Math.random()<dt*0.25){ for(const o of S.agents){ if(o===a||o.dead||o.plague>0) continue;
         const dx=o.x-a.x,dy=o.y-a.y; if(dx*dx+dy*dy<45*45&&Math.random()<(1-o.genes.immunity*0.85)*0.5){o.plague=1;o.plagueT=0;} } }
       if(a.plagueT>14){ a.plague=0; a.health=clamp(a.health+20,0,100); floater(a.x,a.y-14,'💚 بهبود',' #86efac'); }
       if(a.health<=0){ killAgent(a,'طاعون'); continue; }
     }
-    // رفتار: غذا، جفت، سرگردانی
+    // یادگیری در مدرسه/دانشگاه نزدیک
+    const mySchools=tribeSchools[a.tribeId]||[];
+    for(const sch of mySchools){ if(Math.abs(sch.x-a.x)<110&&Math.abs(sch.y-a.y)<110){ a.knowledge=clamp(a.knowledge+dt*0.02,0,1); break; } }
+    // شکار حیوان وقتی خیلی گرسنه است
+    if(a.energy<40){ const an=nearestAnimal(a,26); if(an){ killAnimal(an,a); } }
+    // رفتار: اول شغل و نیازهای تمدن، بعد جفت و غذا
     const speed=(34+a.genes.speed*78)*(a.energy<25?1.25:1)*(a.plague>0?0.6:1);
     let mx=0,my=0,moving=false;
-    const mate=(a.energy>68&&a.mateCd<=0&&a.age>0.4)?nearestMate(a):null;
-    if(mate&&Math.random()<fertFactor*dt*0.25){ const dx=mate.x-a.x,dy=mate.y-a.y,d=Math.hypot(dx,dy);
+    const myTribe=tribeById(a.tribeId);
+    const fest=myTribe&&S.elapsed<myTribe.festivalUntil;
+    const myFert=fertFactor*(fest?1.3:1);
+    const jobDone=(a.energy>45&&a.age>=0.4)?jobStep(a,dt,speed):false;
+    const mate=(a.energy>68&&a.mateCd<=0&&a.age>0.4&&!jobDone)?nearestMate(a):null;
+    if(!jobDone&&mate&&Math.random()<myFert*dt*0.25){ const dx=mate.x-a.x,dy=mate.y-a.y,d=Math.hypot(dx,dy);
       if(d<34){ reproduce(a,mate); }
       else {mx=dx/d;my=dy/d;moving=true;}
-    } else {
+    } else if(!jobDone) {
       const f=a.targetFood&&!a.targetFood.eaten? a.targetFood : (a.targetFood=nearestFood(a));
       if(f){ const dx=f.x-a.x,dy=f.y-a.y,d=Math.hypot(dx,dy);
         if(d<a.genes.size*7+9){
@@ -1748,6 +2269,7 @@ function tick(dt){
     if(moving){ a.x+=mx*speed*dt; a.y+=my*speed*dt; a.angle=Math.atan2(my,mx); }
     a.x=clamp(a.x,12,W-12); a.y=clamp(a.y,12,H-12);
   }
+  civTick(dt);
   S.foods=S.foods.filter(f=>!f.eaten);
   S.agents=S.agents.filter(a=>!a.dead);
   // تاریخچه
@@ -1767,18 +2289,46 @@ function tick(dt){
 function resize(){
   const r=$('#stage').getBoundingClientRect();
   DPR=Math.min(1.5,window.devicePixelRatio||1);
-  W=Math.max(320,r.width); H=Math.max(320,r.height);
-  canvas.width=W*DPR; canvas.height=H*DPR; canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  VW=Math.max(320,r.width); VH=Math.max(320,r.height);
+  canvas.width=VW*DPR; canvas.height=VH*DPR; canvas.style.width=VW+'px'; canvas.style.height=VH+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
   bgGrad=null; SPRITES.clear(); foodSpriteCache=null; // کش‌ها با اندازه‌ی تازه بازسازی می‌شوند
+  if(!CAM.fitted) fitCamera(); else clampCam();
 }
 function draw(){
   // آسمان / زمین (گرادیان فقط وقتی فاز روز عوض شود ساخته می‌شود)
   const night=S.timeOfDay<6||S.timeOfDay>19, dusk=(S.timeOfDay>17&&S.timeOfDay<20)||(S.timeOfDay>5&&S.timeOfDay<7);
-  ctx.fillStyle=skyGrad(night,dusk); ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=skyGrad(night,dusk); ctx.fillRect(0,0,VW,VH);
+  ctx.save();
+  ctx.scale(CAM.zoom,CAM.zoom); ctx.translate(-CAM.x,-CAM.y);
   // تپه‌های نرم
   ctx.fillStyle=night?'rgba(255,255,255,.03)':'rgba(255,255,255,.045)';
-  for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(W*(0.2+i*0.3),H+40,W*0.45,90,0,Math.PI,0);ctx.fill();}
+  for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(WORLD_W*(0.2+i*0.3),WORLD_H+40,WORLD_W*0.45,90,0,Math.PI,0);ctx.fill();}
+  // مرز جهان
+  ctx.strokeStyle='rgba(255,255,255,.14)'; ctx.lineWidth=2/CAM.zoom; ctx.strokeRect(2,2,WORLD_W-4,WORLD_H-4);
+  // قلمرو قبایل
+  for(const t of S.tribes){
+    ctx.fillStyle=t.color+'1f';
+    ctx.beginPath(); ctx.arc(t.centre.x,t.centre.y,170,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle=t.color+'66'; ctx.lineWidth=1.5/CAM.zoom;
+    ctx.beginPath(); ctx.arc(t.centre.x,t.centre.y,170,0,Math.PI*2); ctx.stroke();
+    if(CAM.zoom>=0.7){ ctx.font='bold 15px Vazirmatn, sans-serif'; ctx.textAlign='center'; ctx.fillStyle=t.color; ctx.fillText('🚩 '+t.name,t.centre.x,t.centre.y-178); }
+  }
+  // درخت‌ها و سنگ‌ها
+  ctx.font='18px sans-serif'; ctx.textAlign='center';
+  for(const tr of S.trees) ctx.fillText('🌲',tr.x,tr.y);
+  ctx.font='15px sans-serif';
+  for(const st of S.stones) ctx.fillText('🪨',st.x,st.y);
+  // ساختمان‌ها
+  for(const b of S.buildings){
+    ctx.font='22px sans-serif';
+    ctx.fillText(BUILDINGS[b.type].icon,b.x,b.y);
+    if(b.progress<100){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(b.x-16,b.y+8,32,5); ctx.fillStyle='#f59e0b'; ctx.fillRect(b.x-16,b.y+8,32*b.progress/100,5); }
+    else if(b.type==='farm'){ ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(b.x-16,b.y+8,32,4); ctx.fillStyle='#4ade80'; ctx.fillRect(b.x-16,b.y+8,32*(b.growth||0)/100,4); }
+  }
+  // حیوانات
+  ctx.font='16px sans-serif';
+  for(const an of S.animals){ if(an.dead) continue; ctx.fillText(an.kind==='sheep'?'🐑':'🐄',an.x,an.y); }
   // لاشه‌ها
   for(const c of S.corpses){ctx.globalAlpha=clamp(c.life/14,0,1)*.5;ctx.fillStyle='#94a3b8';
     ctx.beginPath();ctx.arc(c.x,c.y,c.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
@@ -1792,6 +2342,10 @@ function draw(){
   // موجودات
   for(const a of S.agents){
     const r=5+a.genes.size*7, sel=S.selected===a;
+    if(S.highlightTribe!=null&&a.tribeId===S.highlightTribe){
+      const tr=tribeById(a.tribeId); ctx.strokeStyle=tr?tr.color:'#fff'; ctx.lineWidth=2; ctx.globalAlpha=.8;
+      ctx.beginPath(); ctx.arc(a.x,a.y,r+6,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1;
+    }
     // هاله‌ی بینایی موقع انتخاب
     if(sel){ctx.strokeStyle='rgba(255,255,255,.35)';ctx.setLineDash([5,5]);ctx.beginPath();
       ctx.arc(a.x,a.y,60+a.genes.vision*200,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
@@ -1813,9 +2367,11 @@ function draw(){
   for(const f of S.floaters){f.y-=0.5;f.life-=0.016;ctx.globalAlpha=clamp(f.life,0,1);
     ctx.fillStyle=f.color;ctx.fillText(f.text,f.x,f.y);}
   ctx.globalAlpha=1; S.floaters=S.floaters.filter(f=>f.life>0);
-  // تاریکی شب
-  if(night){ctx.fillStyle='rgba(4,8,30,.34)';ctx.fillRect(0,0,W,H);}
-  else if(dusk){ctx.fillStyle='rgba(30,16,60,.16)';ctx.fillRect(0,0,W,H);}
+  ctx.restore();
+  // تاریکی شب (فضای صفحه)
+  if(night){ctx.fillStyle='rgba(4,8,30,.34)';ctx.fillRect(0,0,VW,VH);}
+  else if(dusk){ctx.fillStyle='rgba(30,16,60,.16)';ctx.fillRect(0,0,VW,VH);}
+  drawMinimap();
 }
 
 /* ---------------- قدرت‌های خدا ---------------- */
@@ -2004,6 +2560,11 @@ function updateStats(){
   const avgGen=S.agents.length?S.agents.reduce((s,a)=>s+a.gen,0)/S.agents.length:0;
   $('#statGen').textContent=fa1(avgGen);
   $('#statFights').textContent=fa(S.fights);
+  let totWood=0,totCoins=0; for(const t of S.tribes){ totWood+=t.stock.wood; totCoins+=t.stock.coins; }
+  const sw=$('#statWood'); if(sw) sw.textContent=fa(totWood);
+  const sc=$('#statCoins'); if(sc) sc.textContent=fa(totCoins);
+  S.civRenderT=(S.civRenderT||0)+0.25;
+  if(S.civRenderT>=1){ S.civRenderT=0; if($('#tab-civ')&&$('#tab-civ').classList.contains('active')) renderCiv(); }
   $('#clockDay').textContent='روز '+fa(S.day);
   $('#clockSeason').textContent=seasonOf(S.day);
   $('#clockTemp').textContent=fa(Math.round(tempNow()))+'°C';
@@ -2066,6 +2627,12 @@ function updateSelected(keep){
   const pillsHtml=traitPills.slice(0,8).map(t=>`<span class="pill">${t.icon} ${t.name}</span>`).join('')+(traitPills.length>8?` <span class="pill more">+${fa(traitPills.length-8)} ویژگی دیگر</span>`:'');
   $('#selTraits').innerHTML=pillsHtml||'<span style="color:var(--muted)">ویژگی برجسته‌ای ندارد — هنوز معمولی است.</span>';
   $('#selFamily').textContent=(a.parentNames?'والدین: '+a.parentNames+' • ':'')+'فرزندان: '+fa(a.children)+' • '+(a.plague>0?'🦠 بیمار است!':'سالم است')+(coatIsDark(a)?' • 🌑 پوشش تیره (اپیستازی)':'');
+  const tr=tribeById(a.tribeId);
+  const civEl=$('#selCiv'); if(civEl) civEl.textContent=(tr?('🏛 '+tr.name+' • '):'')+'💼 '+(a.job?(JOBS.find(j=>j.id===a.job)||{}).name:'کودک — هنوز شغلی ندارد')+' • 🧠 دانش ٪'+fa(Math.round(a.knowledge*100));
+  const gEl=$('#selGoal'); if(gEl) gEl.textContent=a.goal||'—';
+  const kEl=$('#selKnow'); if(kEl) kEl.style.width=(a.knowledge*100)+'%';
+  const kt=$('#selKnowTxt'); if(kt) kt.textContent='٪'+fa(Math.round(a.knowledge*100));
+  const sj=$('#selJob'); if(sj) sj.value=a.job||'';
   $('#btnFollow').textContent=S.follow?'👁 در حال دنبال‌کردن — لغو':'👁 دنبال‌کردن';
   renderPunnettMini();
 }
@@ -2151,32 +2718,68 @@ const GUIDE=[
  {t:'💔 افسردگی هم‌خونی',d:'تولیدمثل خویشاوندان نزدیک، آلل‌های مغلوب مضر را کنار هم می‌آورد؛ فرزند ضعیف‌تر می‌شود یا می‌میرد.',ex:'مثال: خواهر و برادر (F=۲۵٪) بچه‌دار شوند، بچه ۳۵٪ شانس مرگ در بدو تولد دارد و عمرش کوتاه‌تر است.'},
  {t:'⚖️ تعادل هاردی–واینبرگ',d:'اگر هیچ انتخاب، جهش، مهاجرت و رانشی نباشد، فرکانس ژنوتیپ‌ها ثابت می‌ماند: AA=p² ، Aa=2pq ، aa=q².',ex:'مثال: اگر p=۰٫۶ باشد، انتظار داریم ۳۶٪ AA، ۴۸٪ Aa و ۱۶٪ aa ببینیم. هرچه مشاهده‌شده از این دورتر باشد، یعنی انتخاب یا رانش در کار است.'},
  {t:'🎭 اپیستازی',d:'یک ژن می‌تواند اثر ژن دیگر را کاملاً بپوشاند؛ مثل اینکه یک کلید، چراغ دیگری را خاموش کند.',ex:'مثال: ژن «پوشش تیره» اگر ظاهر شود، بدن تیره می‌شود، هرچقدر هم ژن «رنگ پوشش» روشن باشد. رنگ روشن زیر پوشش تیره پنهان می‌ماند ولی به بچه‌ها منتقل می‌شود.'},
+ {t:'🏛 قبایل',d:'موجودات در سه قبیله زندگی می‌کنند: آفتاب، ماه و رود. هر قبیله انبار، فناوری و فرهنگ خودش را دارد؛ نوزاد قبیله‌ی پدر و مادرش را می‌گیرد.',ex:'مثال: در تب «تمدن» روی یک قبیله بزن تا اعضای آن روی نقشه حلقه‌دار شوند و دوربین روی مرکزشان برود.'},
+ {t:'💼 شغل‌ها',d:'هر موجود بالغ یک شغل دارد: جمع‌آور، کشاورز، سازنده، جنگجو، دانشمند، درمانگر، بازرگان یا دامدار. شغل از روی ژن‌ها و سهمیه‌ی قبیله تعیین می‌شود.',ex:'مثال: موجودی را انتخاب کن و از کارتش شغلش را عوض کن؛ یا در تب تمدن سهمیه‌ی جنگجوها را زیاد کن تا قبیله‌ات قوی‌تر شود.'},
+ {t:'🔬 فناوری و عصرها',d:'دانشمندان و مدرسه‌ها امتیاز پژوهش می‌سازند و قبیله فناوری‌های تازه کشف می‌کند: از آتش و ابزار سنگی تا پول و پزشکی. عصر قبیله از فناوری‌هایش مشخص می‌شود.',ex:'مثال: «کشاورزی» مزرعه را باز می‌کند، «پول» بازار را، «پزشکی» بیمارستان را. روی یک فناوری در دسترس بزن تا در اولویت پژوهش قرار گیرد.'},
+ {t:'🪙 پول و تجارت',d:'بعد از کشف «پول» و ساختن بازار، بازرگانان غذای اضافه را می‌فروشند و سکه می‌گیرند؛ قبایل دوست هم با هم تجارت می‌کنند و رابطه‌شان بهتر می‌شود.',ex:'مثال: به قبیله‌ای که با تو دشمن نیست «هدیه غذا» بده؛ رابطه +۲۰ می‌شود و شاید به اتحاد برسید.'},
+ {t:'⚔️ جنگ و صلح',d:'رابطه‌ی دو قبیله از ۱۰۰- تا ۱۰۰+ است. زیر ۵۰- یعنی جنگ: جنگجوها به قبیله‌ی دشمن حمله می‌برند و غذا می‌دزدند. بالای ۵۰+ یعنی اتحاد.',ex:'مثال: از تب تمدن روی «اعلام جنگ» بزن و ببین جنگجوها چطور دسته‌ای حمله می‌کنند؛ با «صلح کن» جنگ تمام می‌شود.'},
+ {t:'🗺 حرکت و زوم نقشه',d:'جهان ۱۶۰۰ در ۱۲۰۰ است و بزرگ‌تر از صفحه است: با کشیدن انگشت یا موس نقشه جابه‌جا می‌شود، با پینچ دو انگشت یا چرخ موس زوم می‌شود.',ex:'مثال: دکمه‌های ＋ و － و 🎯 بالای نقشه را بزن؛ روی مینی‌مپ پایین نقشه بزن تا دوربین همان‌جا بپرد. وقتی موجودی را دنبال می‌کنی، دوربین روی او قفل می‌شود.'},
 ];
 function buildGuide(){
   const box=$('#guideList'); if(!box) return;
   box.innerHTML=GUIDE.map(g=>`<div class="guide-card"><h4>${g.t}</h4><p>${g.d}</p><p class="ex">${g.ex}</p></div>`).join('');
 }
 
-/* ---------------- ورودی لمسی / موس ---------------- */
+/* ---------------- ورودی لمسی / موس + دوربین ---------------- */
 let lastTap=0,lastTapX=0,lastTapY=0,downX=0,downY=0;
+const pointers=new Map();
+let panning=false, pinchPrevD=0, pinchMid=null;
 function canvasPos(e){ const r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
-canvas.addEventListener('pointerdown',e=>{ const p=canvasPos(e); downX=p.x; downY=p.y; });
+canvas.addEventListener('pointerdown',e=>{
+  canvas.setPointerCapture(e.pointerId);
+  const p=canvasPos(e); pointers.set(e.pointerId,p);
+  if(pointers.size===1){ downX=p.x; downY=p.y; panning=false; }
+  else if(pointers.size===2){ const pts=[...pointers.values()]; pinchPrevD=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y); pinchMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2}; panning=true; }
+});
+canvas.addEventListener('pointermove',e=>{
+  if(!pointers.has(e.pointerId)) return;
+  const prev=pointers.get(e.pointerId); const p=canvasPos(e); pointers.set(e.pointerId,p);
+  if(pointers.size===1){
+    const dx=p.x-prev.x, dy=p.y-prev.y;
+    if(!panning&&Math.hypot(p.x-downX,p.y-downY)>8) panning=true;
+    if(panning){ CAM.x-=dx/CAM.zoom; CAM.y-=dy/CAM.zoom; clampCam(); }
+  } else if(pointers.size===2){
+    const pts=[...pointers.values()];
+    const d=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
+    const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+    if(pinchPrevD>0){ zoomAt(mid.x,mid.y,d/pinchPrevD); CAM.x-=(mid.x-pinchMid.x)/CAM.zoom; CAM.y-=(mid.y-pinchMid.y)/CAM.zoom; clampCam(); }
+    pinchPrevD=d; pinchMid=mid;
+  }
+});
 canvas.addEventListener('pointerup',e=>{
+  const wasPinch=pointers.size>=2;
+  pointers.delete(e.pointerId);
+  if(pointers.size===1){ const p=[...pointers.values()][0]; downX=p.x; downY=p.y; panning=false; }
+  if(wasPinch||panning){ if(pointers.size===0) panning=false; return; }
   const p=canvasPos(e); if(Math.hypot(p.x-downX,p.y-downY)>12) return; // کشیدن بود، نه ضربه
+  const w=screenToWorld(p.x,p.y);
   const now=Date.now();
   if(now-lastTap<350&&Math.hypot(p.x-lastTapX,p.y-lastTapY)<45){
-    for(let i=0;i<12;i++) spawnFood(p.x+rand(-70,70),p.y+rand(-70,70));
-    burst(p.x,p.y,'#4ade80',16,120); toast('🍎 باران غذا!'); lastTap=0; return;
+    for(let i=0;i<12;i++) spawnFood(w.x+rand(-70,70),w.y+rand(-70,70));
+    burst(w.x,w.y,'#4ade80',16,120); toast('🍎 باران غذا!'); lastTap=0; return;
   }
   lastTap=now; lastTapX=p.x; lastTapY=p.y;
-  if(S.armed){ execPower(S.armed,p.x,p.y); return; }
-  const a=nearestAgent(p.x,p.y,34);
+  if(S.placing){ const t=tribeById(S.selTribe); if(t&&queueBuilding(t,S.placing,w.x,w.y)){ toast('🏗 «'+BUILDINGS[S.placing].name+'» در صف ساخت قرار گرفت'); renderCiv(); } S.placing=null; updatePlacingHint(); return; }
+  if(S.armed){ execPower(S.armed,w.x,w.y); return; }
+  const a=nearestAgent(w.x,w.y,30/CAM.zoom+8);
   if(a){
     if(S.pickMate){ S.mateSelected=a; S.pickMate=false; toast('💞 والد دوم: '+a.name+' — جدول پانت را در تب ژنتیک ببین'); renderPunnettBox(); updateSelected(); return; }
     S.selected=a; updateSelected();
   }
   else { S.selected=null; S.follow=false; updateSelected(); }
 });
+canvas.addEventListener('pointercancel',e=>{ pointers.delete(e.pointerId); if(pointers.size===0) panning=false; });
+canvas.addEventListener('wheel',e=>{ e.preventDefault(); const p=canvasPos(e); zoomAt(p.x,p.y,e.deltaY<0?1.15:1/1.15); },{passive:false});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
 /* ---------------- سیم‌کشی دکمه‌ها ---------------- */
@@ -2254,10 +2857,12 @@ $('#btnCreateTrait').addEventListener('click',()=>{
   logEvent('✨ ویژگی دلخواه «'+name+'» ساخته و به ۲۵٪ تزریق شد.','god');
 });
 $('#btnSave').addEventListener('click',()=>{
-  const data={v:2,settings:S.settings,day:S.day,timeOfDay:S.timeOfDay,births:S.births,deaths:S.deaths,fights:S.fights,
+  const data={v:3,settings:S.settings,day:S.day,timeOfDay:S.timeOfDay,births:S.births,deaths:S.deaths,fights:S.fights,
     deathsBy:S.deathsBy,nextId:S.nextId,nextLineage:S.nextLineage,mutations:S.mutations,genetics:S.genetics,
     geneRules:GEN_RULES,alleleGene:S.alleleGene,
-    agents:S.agents.map(a=>({x:a.x,y:a.y,genes:a.genes,genotype:a.genotype,gen:a.gen,lineage:a.lineage,hue:a.hue,sex:a.sex,energy:a.energy,health:a.health,age:a.age,lifespan:a.lifespan,children:a.children,name:a.name,parents:a.parents||[],ancestors:a.ancestors||[],inbreedF:a.inbreedF||0}))};
+    tribes:S.tribes,buildings:S.buildings,buildQueue:S.buildQueue,trees:S.trees,stones:S.stones,animals:S.animals,
+    nextBuildId:S.nextBuildId,selTribe:S.selTribe,
+    agents:S.agents.map(a=>({x:a.x,y:a.y,genes:a.genes,genotype:a.genotype,gen:a.gen,lineage:a.lineage,hue:a.hue,sex:a.sex,energy:a.energy,health:a.health,age:a.age,lifespan:a.lifespan,children:a.children,name:a.name,parents:a.parents||[],ancestors:a.ancestors||[],inbreedF:a.inbreedF||0,tribeId:a.tribeId,job:a.job,knowledge:a.knowledge,inv:a.inv}))};
   localStorage.setItem('godsim-save',JSON.stringify(data)); toast('💾 جهان ذخیره شد'); logEvent('💾 جهان ذخیره شد.','good');
 });
 $('#btnLoad').addEventListener('click',()=>{
@@ -2268,6 +2873,9 @@ $('#btnLoad').addEventListener('click',()=>{
     Object.assign(S.settings,d.settings); S.day=d.day; S.timeOfDay=d.timeOfDay;
     S.births=d.births; S.deaths=d.deaths; S.fights=d.fights; S.deathsBy=d.deathsBy;
     S.nextId=d.nextId; S.nextLineage=d.nextLineage; S.agents=[]; S.foods=[]; S.selected=null;
+    S.buildings=[]; S.buildQueue=[]; S.trees=[]; S.stones=[]; S.animals=[];
+    if(d.v===3&&d.tribes){ S.tribes=d.tribes; S.buildings=d.buildings||[]; S.buildQueue=d.buildQueue||[]; S.trees=d.trees||[]; S.stones=d.stones||[]; S.animals=d.animals||[]; S.nextBuildId=d.nextBuildId||1; S.selTribe=d.selTribe||0; }
+    else { createTribes(); spawnResources(); }
     if(d.geneRules) GEN_RULES=d.geneRules;
     if(d.genetics) Object.assign(S.genetics,d.genetics);
     if(d.mutations) S.mutations=d.mutations;
@@ -2277,9 +2885,10 @@ $('#btnLoad').addEventListener('click',()=>{
       const gt=a.genotype||randomGenotypeAll();
       Object.keys(GENE_LABELS).forEach(k=>{ if(!gt[k]) gt[k]=randomGenotype(k,0.5); if(gt[k]._env===undefined) gt[k]._env=0; });
       const ag=makeAgent(a.x,a.y,a.genes||genesFromGenotype(gt),a.gen,a.lineage,a.hue,gt,a.parents||[],a.ancestors||[]);
-      Object.assign(ag,{sex:a.sex,energy:a.energy,health:a.health,age:a.age,lifespan:a.lifespan,children:a.children,name:a.name,inbreedF:a.inbreedF||0});
+      Object.assign(ag,{sex:a.sex,energy:a.energy,health:a.health,age:a.age,lifespan:a.lifespan,children:a.children,name:a.name,inbreedF:a.inbreedF||0,tribeId:a.tribeId,job:a.job||null,knowledge:a.knowledge||0,inv:a.inv||{wood:0,stone:0}});
       ag.genes=genesFromGenotype(gt); S.agents.push(ag);
     }
+    if(d.v!==3){ for(const ag of S.agents){ ag.tribeId=ag.lineage%S.tribes.length; } for(const t of S.tribes) assignJobs(t); }
     for(let i=0;i<70;i++) spawnFood();
     buildSliders(); buildGeneRules(); buildAlleleSelect();
     $('#matePref').value=S.genetics.matePref; $('#matePrefStrength').value=S.genetics.matePrefStrength;
@@ -2319,6 +2928,7 @@ function loop(now){
     while(acc>1/60&&steps<8){ tick(1/60); acc-=1/60; steps++; }
     if(steps===8) acc=0;
   }
+  if(S.follow&&S.selected&&!S.selected.dead){ CAM.x=S.selected.x-VW/CAM.zoom/2; CAM.y=S.selected.y-VH/CAM.zoom/2; clampCam(); }
   draw();
   statAcc+=rawDt;
   if(statAcc>0.25){ statAcc=0; updateStats(); }
@@ -2329,7 +2939,7 @@ function loop(now){
 
 /* ---------------- شروع ---------------- */
 window.addEventListener('resize',resize);
-buildSliders(); buildPresets(); buildPowers(); buildTraits(); buildGeneRules(); buildAlleleSelect(); buildGuide();
+buildSliders(); buildPresets(); buildPowers(); buildTraits(); buildGeneRules(); buildAlleleSelect(); buildGuide(); buildCiv();
 resize(); resetWorld(120);
 logEvent('👋 به جهان کوچک خوش آمدی، خدا! موجودات دنبال غذا می‌گردند؛ ویژگی تزریق کن و تکامل را تماشا کن.','good');
 logEvent('💡 راهنما: دو بار روی زمین بزن = باران غذا. روی یک موجود بزن تا ژن‌هایش را ببینی.','good');

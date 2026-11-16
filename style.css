@@ -251,3 +251,45 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .tabs::-webkit-scrollbar{display:none}
 .tab{white-space:nowrap}
 @media (max-width:900px){ .gene-rule .gr-row{grid-template-columns:1fr 1fr} }
+
+/* ---------- تمدن ---------- */
+.cam-controls{position:absolute;top:58px;inset-inline-end:10px;display:flex;flex-direction:column;gap:6px;z-index:6}
+.cam-controls button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:rgba(8,12,30,.75);backdrop-filter:blur(8px);font-size:19px;font-weight:800;cursor:pointer}
+#minimap{position:absolute;bottom:36px;inset-inline-end:10px;width:170px;height:128px;border:1px solid var(--line);border-radius:12px;background:#0a1030;z-index:5;box-shadow:var(--shadow);cursor:pointer}
+.tribe-row{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:11px 12px;margin-bottom:8px;background:rgba(255,255,255,.04);cursor:pointer}
+.tribe-row.sel{border-color:var(--accent);background:rgba(124,92,255,.18)}
+.tribe-dot{width:16px;height:16px;border-radius:50%;flex:none;display:inline-block}
+.tribe-info{flex:1;min-width:0}
+.tribe-info b{display:block;font-size:14px}
+.tribe-info small{color:var(--muted);font-size:11.5px;line-height:1.6;display:block}
+.tribe-stock{font-size:12px;white-space:nowrap}
+.stock-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}
+.stock-grid div{display:flex;justify-content:space-between;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:11px;padding:9px 11px;font-size:13px}
+.research-row{background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.4);border-radius:11px;padding:9px 11px;font-size:13px;margin:8px 0}
+.job-row{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:11px;padding:8px 11px;font-size:13px;margin-bottom:6px}
+.job-row span:first-child{flex:1}
+.job-row .quota{display:flex;align-items:center;gap:6px}
+.job-row .quota .btn{min-height:34px;padding:4px 10px;font-size:15px}
+.rel-row{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:11px;padding:8px 10px;font-size:12.5px;margin-bottom:6px;flex-wrap:wrap}
+.rel-row .bar{flex:1;min-width:60px}
+.rel-row .btn{min-height:36px;padding:6px 8px;font-size:11.5px}
+.tech-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tech-card{border:1px solid var(--line);border-radius:13px;padding:10px;background:rgba(255,255,255,.04);font-size:12.5px;line-height:1.7}
+.tech-card b{display:block;font-size:13.5px}
+.tech-card small{display:block;color:var(--muted);font-size:11.5px}
+.tech-card.done{border-color:rgba(52,211,153,.55);background:rgba(52,211,153,.1)}
+.tech-card.avail{border-color:rgba(245,158,11,.6);cursor:pointer}
+.tech-card.avail:active{transform:scale(.97)}
+.tech-card.locked{opacity:.55}
+.build-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.build-card{border:1px solid var(--line);border-radius:13px;padding:10px;background:rgba(255,255,255,.04);font-size:12.5px;line-height:1.7;display:flex;flex-direction:column;gap:2px}
+.build-card b{font-size:13.5px}
+.build-card small{color:var(--muted);font-size:11.5px}
+.build-card.locked{opacity:.55}
+.build-card .btn{margin-top:6px;min-height:40px}
+.build-owned{margin:4px 0 8px}
+.build-owned .pill{display:inline-block;background:rgba(52,211,153,.16);border:1px solid rgba(52,211,153,.4);border-radius:99px;padding:3px 10px;margin:2px;font-size:12px}
+.sel-civ{color:var(--muted);font-size:12.5px;margin:8px 0 0;line-height:1.8}
+.sel-job{display:block;font-size:12.5px;font-weight:700;margin-top:10px}
+.sel-job select{width:100%;margin-top:5px;background:#0b1230;color:#fff;border:1px solid var(--line);border-radius:10px;padding:9px;font-size:13.5px;min-height:42px}
+@media (max-width:900px){ #minimap{width:120px;height:90px;bottom:30px} }
